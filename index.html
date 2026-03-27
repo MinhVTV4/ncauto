@@ -75,28 +75,8 @@
         .toggle-checkbox:checked { right: 0; border-color: #2563EB; }
         .toggle-checkbox:checked + .toggle-label { background-color: #2563EB; }
 
-        /* Hiệu ứng gợn sóng cho Micro */
-        @keyframes ping-slow {
-            75%, 100% { transform: scale(1.5); opacity: 0; }
-        }
-        .animate-ping-slow { animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
-
-        /* ✨ VŨ KHÍ BÍ MẬT 1: ÉP PAGE AGENT TÀNG HÌNH BẰNG CSS TUYỆT ĐỐI */
-        /* Không dùng JS ẩn nữa vì sẽ bị Agent ghi đè. Ta dùng !important đẩy nó ra ngoài màn hình */
-        page-agent, .page-agent-panel-container {
-            position: fixed !important;
-            top: 200vh !important; 
-            left: -9999px !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            visibility: hidden !important;
-            z-index: -9999 !important;
-        }
-        /* Cần đảm bảo các mặt nạ (highlight) của nó lúc thao tác DOM vẫn hiện */
-        .page-agent-simulator-mask {
-            pointer-events: none !important;
-            z-index: 99999 !important;
-        }
+        /* Tinh chỉnh Z-index cho PageAgent panel nếu cần */
+        .page-agent-panel-container { z-index: 99999 !important; }
     </style>
 </head>
 <body class="bg-[#f8fafc] min-h-screen flex flex-col relative selection:bg-blue-200 selection:text-blue-900">
@@ -137,10 +117,12 @@
                 <span>☁️</span><span class="hidden md:inline">Lịch sử</span>
             </button>
             
+            <!-- ✨ Nút kích hoạt Agent đã thêm aria-label -->
             <button id="toggleAgentBtn" aria-label="Bật tắt Trợ lý Web AI" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
                 <span>🤖</span><span class="hidden md:inline">Trợ lý Web</span>
             </button>
 
+            <!-- ✨ Nút Tự động đọc -->
             <button id="autoScrollBtn" aria-label="Bật tắt Đọc tự động" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
                 <span id="autoScrollIcon">⬇️</span><span id="autoScrollText" class="hidden md:inline">Đọc tự động</span>
             </button>
@@ -330,13 +312,7 @@
         </div>
     </div>
 
-    <!-- NÚT MICRO ĐIỀU KHIỂN GIỌNG NÓI (VOICE CONTROL) -->
-    <button id="voiceCmdBtn" aria-label="Bật tắt Nhận diện giọng nói liên tục" class="fixed bottom-6 left-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-700 transition-colors z-50 focus:outline-none focus:ring-4 focus:ring-blue-300">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-        <span id="voiceRipple" class="absolute inset-0 rounded-full bg-red-400 animate-ping-slow opacity-0 pointer-events-none"></span>
-    </button>
-
-    <!-- Tích hợp thư viện PageAgent trực tiếp -->
+    <!-- Tích hợp thư viện PageAgent trực tiếp (Được dời xuống cuối body để tránh lỗi DOM null) -->
     <script src="https://cdn.jsdelivr.net/npm/page-agent@1.6.2/dist/iife/page-agent.demo.js"></script>
 
     <script type="module">
@@ -451,6 +427,7 @@
                 
                 document.getElementById('statusText').innerHTML = '<span class="text-green-600 text-lg">●</span> Động cơ AI Sẵn sàng';
                 
+                // ✨ KHỞI TẠO PAGE AGENT NGAY KHI AI SẴN SÀNG
                 setTimeout(initPageAgent, 1000);
 
                 return true;
@@ -654,6 +631,7 @@
         let pageAgentInstance = null;
         const FAKE_AGENT_URL = 'https://deepread-fake-agent-api/v1/chat/completions';
 
+        // Đánh chặn lệnh gọi API từ PageAgent và đẩy thẳng vào core AI của DeepRead
         const originalFetch = window.fetch;
         window.fetch = async function(...args) {
             const url = args[0];
@@ -665,6 +643,7 @@
                     let geminiContents = [];
                     let sysPrompt = "";
 
+                    // Định tuyến từ định dạng OpenAI sang Gemini Format
                     (body.messages || []).forEach(msg => {
                         if (msg.role === 'system') {
                             sysPrompt += msg.content + "\n";
@@ -676,13 +655,16 @@
                         }
                     });
 
+                    // Gắn System Prompt vào câu đầu tiên (vì Firebase Vertex AI cơ bản ít hỗ trợ param system_instruction)
                     if (sysPrompt && geminiContents.length > 0 && geminiContents[0].role === 'user') {
                         geminiContents[0].parts[0].text = `[SYSTEM INSTRUCTION CỦA AGENT]\n${sysPrompt}\n\n[LỆNH USER / DOM HIỆN TẠI]\n${geminiContents[0].parts[0].text}`;
                     }
 
+                    // Kích hoạt Core AI (Tự động hưởng lợi từ Auto-Fallback và ví khóa Firebase)
                     const result = await executeAITask('chat', { contents: geminiContents });
                     const aiText = result.response.text();
 
+                    // Đóng gói trả về giống y hệt OpenAI để PageAgent không phát hiện ra
                     const mockOpenAIResponse = {
                         id: "chatcmpl-" + Date.now(),
                         object: "chat.completion",
@@ -699,29 +681,38 @@
                     return new Response(JSON.stringify({ error: { message: error.message } }), { status: 500 });
                 }
             }
+            // Các fetch khác (Firebase, etc) thì pass qua bình thường
             return originalFetch.apply(this, args);
         };
 
+        // Hàm khởi tạo Agent
         function initPageAgent() {
-            if (!window.PageAgent) return;
+            if (!window.PageAgent) {
+                console.warn("Thư viện PageAgent chưa sẵn sàng.");
+                return;
+            }
             if (!pageAgentInstance) {
                 pageAgentInstance = new window.PageAgent({
                     model: 'gemini-3.1-flash-lite-preview',
-                    baseURL: 'https://deepread-fake-agent-api/v1',
+                    baseURL: 'https://deepread-fake-agent-api/v1', // URL ảo sẽ bị chặn lại bởi interceptor
                     apiKey: 'fake-bypassed-key',
                     language: 'vi'
                 });
             }
-            // Ẩn nút thủ công vì ta sẽ dùng giọng nói hoàn toàn
-            // document.getElementById('toggleAgentBtn').classList.remove('hidden');
+            document.getElementById('toggleAgentBtn').classList.remove('hidden');
         }
 
+        // Sự kiện Bật/Tắt UI của Agent
         document.getElementById('toggleAgentBtn').addEventListener('click', () => {
             if (pageAgentInstance) {
+                // PageAgent gen ra class css, ta dùng nó để toggle nếu hàm toggle ko rõ
                 const panel = document.querySelector('.page-agent-panel-container');
-                if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                if (panel) {
+                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                }
             }
         });
+
 
         // Khởi động
         window.onload = function() {
@@ -1029,10 +1020,11 @@
         // ==========================================
         window.isAutoScrolling = false;
         window.scrollAnimationId = null;
-        window.scrollSpeed = 0.8; 
+        window.scrollSpeed = 0.8; // Tốc độ cuộn (pixel mỗi frame)
 
         window.autoScrollStep = function() {
             window.scrollBy(0, window.scrollSpeed);
+            // Kiểm tra nếu đã cuộn đến cuối trang (sai số 2px)
             if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2) {
                 window.toggleAutoScroll();
                 return;
@@ -1046,6 +1038,7 @@
             const autoScrollBtn = document.getElementById('autoScrollBtn');
             
             if (window.isAutoScrolling) {
+                // Dừng cuộn
                 cancelAnimationFrame(window.scrollAnimationId);
                 window.isAutoScrolling = false;
                 btnIcon.textContent = "⬇️";
@@ -1054,6 +1047,7 @@
                 autoScrollBtn.classList.replace('text-rose-700', 'text-emerald-700');
                 autoScrollBtn.classList.replace('border-rose-200', 'border-emerald-200');
             } else {
+                // Bắt đầu cuộn
                 window.isAutoScrolling = true;
                 btnIcon.textContent = "⏸️";
                 btnText.textContent = "Dừng đọc";
@@ -1065,191 +1059,10 @@
         };
 
         document.getElementById('autoScrollBtn').addEventListener('click', window.toggleAutoScroll);
+        
+        // Tạm dừng cuộn tự động khi người dùng tự cuộn tay hoặc vuốt màn hình
         window.addEventListener('wheel', () => { if (window.isAutoScrolling) window.toggleAutoScroll(); }, { passive: true });
         window.addEventListener('touchstart', () => { if (window.isAutoScrolling) window.toggleAutoScroll(); }, { passive: true });
-
-        // ==========================================
-        // 7. ĐIỀU KHIỂN BẰNG GIỌNG NÓI LIÊN TỤC
-        // ==========================================
-        const voiceCmdBtn = document.getElementById('voiceCmdBtn');
-        const voiceRipple = document.getElementById('voiceRipple');
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        let isVoiceEnabled = false;
-        let recognition = null;
-
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'vi-VN';
-            recognition.continuous = true; // NGHE LIÊN TỤC RẢNH TAY
-            recognition.interimResults = false;
-
-            recognition.onresult = function(event) {
-                const lastIdx = event.results.length - 1;
-                const transcript = event.results[lastIdx][0].transcript.toLowerCase().trim();
-                
-                if (transcript) {
-                    showToast("🎤 Đã nghe: " + transcript);
-                    handleVoiceCommand(transcript);
-                }
-            };
-
-            recognition.onend = function() {
-                // Tự động khởi động lại nếu chưa bị tắt bằng tay
-                if (isVoiceEnabled) {
-                    try { recognition.start(); } catch(e) {}
-                }
-            };
-            
-            recognition.onerror = function(event) {
-                console.log("Mic error:", event.error);
-            };
-
-        } else {
-            voiceCmdBtn.style.display = 'none';
-        }
-
-        function toggleVoiceControl() {
-            if (!recognition) return alert("Trình duyệt không hỗ trợ nhận diện giọng nói.");
-            isVoiceEnabled = !isVoiceEnabled;
-            
-            if (isVoiceEnabled) {
-                voiceCmdBtn.classList.add('bg-red-500');
-                voiceRipple.classList.remove('opacity-0');
-                showToast("🎤 Đã BẬT Micro. Bạn có thể nói các lệnh.");
-                try { recognition.start(); } catch(e) {}
-            } else {
-                voiceCmdBtn.classList.remove('bg-red-500');
-                voiceRipple.classList.add('opacity-0');
-                showToast("Đã TẮT Micro.");
-                recognition.stop();
-            }
-        }
-
-        voiceCmdBtn.addEventListener('click', toggleVoiceControl);
-
-        function showToast(msg) {
-            let toast = document.getElementById('voiceToast');
-            if (!toast) {
-                toast = document.createElement('div');
-                toast.id = 'voiceToast';
-                toast.className = 'fixed bottom-24 left-6 bg-slate-800 text-white px-5 py-2.5 rounded-lg shadow-2xl z-50 transition-opacity duration-300 font-medium text-sm border border-slate-600';
-                document.body.appendChild(toast);
-            }
-            toast.textContent = msg;
-            toast.style.opacity = '1';
-            // Tự ẩn sau 4 giây
-            setTimeout(() => { if(toast) toast.style.opacity = '0'; }, 4000);
-        }
-
-        function handleVoiceCommand(cmd) {
-            // Lệnh hệ thống
-            if (cmd.includes('đọc tự động') || cmd.includes('bắt đầu đọc') || cmd.includes('cuộn trang') || cmd.includes('trôi màn hình')) {
-                if (!window.isAutoScrolling) window.toggleAutoScroll();
-                return;
-            }
-            if (cmd.includes('dừng đọc') || cmd.includes('dừng lại') || cmd.includes('đứng lại')) {
-                if (window.isAutoScrolling) window.toggleAutoScroll();
-                return;
-            }
-            if (cmd.includes('bài mới') || cmd.includes('tạo bài mới') || cmd.includes('về trang chủ')) {
-                document.getElementById('newReadBtn').click();
-                return;
-            }
-
-            // Gửi đi lệnh tự do cho AI Agent
-            sendToPageAgent(cmd);
-        }
-
-        // Kỹ thuật quét sâu (Đào xuyên qua mọi lớp Shadow DOM lồng nhau)
-        function deepQuerySelector(root, selector) {
-            if (!root) return null;
-            let el = root.querySelector(selector);
-            if (el) return el;
-            for (let child of root.querySelectorAll('*')) {
-                if (child.shadowRoot) {
-                    let found = deepQuerySelector(child.shadowRoot, selector);
-                    if (found) return found;
-                }
-            }
-            return null;
-        }
-
-        function sendToPageAgent(text) {
-            const host = document.querySelector('page-agent') || document.querySelector('.page-agent-panel-container');
-            if (!host) {
-                showToast("⚠️ Trợ lý Agent chưa sẵn sàng.");
-                return;
-            }
-            const root = host.shadowRoot || host;
-            
-            // 1. Quét sâu để tìm đúng ô nhập liệu
-            let input = deepQuerySelector(root, 'textarea, input[type="text"], input[type="search"]') || deepQuerySelector(root, '[contenteditable="true"]');
-            
-            if (!input) {
-                showToast("⚠️ Không tìm thấy ô nhập lệnh của Agent.");
-                return;
-            }
-
-            // 2. Kỹ thuật Bypass Anti-Bot bằng document.execCommand
-            input.focus();
-            input.value = ''; // Xóa sạch nội dung cũ (nếu có)
-            
-            // Ép trình duyệt mô phỏng lệnh "Dán chữ" (Paste) của người thật.
-            if (!document.execCommand('insertText', false, text)) {
-                // Fallback nếu trình duyệt không hỗ trợ execCommand
-                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-                const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-                
-                if (input.tagName === 'INPUT' && nativeInputValueSetter) {
-                    nativeInputValueSetter.call(input, text);
-                } else if (input.tagName === 'TEXTAREA' && nativeTextAreaValueSetter) {
-                    nativeTextAreaValueSetter.call(input, text);
-                } else {
-                    input.value = text;
-                    input.innerText = text;
-                }
-            }
-
-            // Bắn event để React/Vue kích hoạt hàm Validate
-            input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-
-            // 3. Tìm nút gửi và Click
-            setTimeout(() => {
-                // Lấy tất cả nút trong và ngoài Shadow DOM
-                let buttons = Array.from(root.querySelectorAll('button, [role="button"]'));
-                for (let child of root.querySelectorAll('*')) {
-                    if (child.shadowRoot) {
-                        buttons = buttons.concat(Array.from(child.shadowRoot.querySelectorAll('button, [role="button"]')));
-                    }
-                }
-                
-                // Nhận dạng nút gửi (Gửi, Send, Submit, hoặc chứa icon máy bay giấy)
-                let sendBtn = buttons.find(b => 
-                    b.type === 'submit' || 
-                    (b.className && b.className.toLowerCase().includes('send')) || 
-                    b.innerHTML.includes('send') || 
-                    b.innerHTML.includes('paper-plane') || 
-                    b.innerHTML.includes('M2.01 21L23 12') || // Icon máy bay giấy SVG
-                    b.innerHTML.includes('path')
-                );
-
-                if (!sendBtn && buttons.length > 0) sendBtn = buttons[buttons.length - 1];
-
-                if (sendBtn && !sendBtn.disabled) {
-                    // Cố tình dùng MouseEvent để giả lập con trỏ chuột click xuống
-                    sendBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, view: window }));
-                    sendBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, view: window }));
-                    sendBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true, view: window }));
-                } else {
-                    // Nếu không có nút, ép trình duyệt nhấn phím Enter
-                    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
-                    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
-                }
-                showToast("🤖 Đã giao việc ngầm cho AI: " + text);
-            }, 300);
-        }
 
     </script>
 </body>
