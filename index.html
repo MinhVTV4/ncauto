@@ -75,14 +75,28 @@
         .toggle-checkbox:checked { right: 0; border-color: #2563EB; }
         .toggle-checkbox:checked + .toggle-label { background-color: #2563EB; }
 
-        /* Tinh chỉnh Z-index cho PageAgent panel nếu cần */
-        .page-agent-panel-container { z-index: 99999 !important; }
-        
         /* Hiệu ứng gợn sóng cho Micro */
         @keyframes ping-slow {
             75%, 100% { transform: scale(1.5); opacity: 0; }
         }
         .animate-ping-slow { animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+        /* ✨ VŨ KHÍ BÍ MẬT 1: ÉP PAGE AGENT TÀNG HÌNH BẰNG CSS TUYỆT ĐỐI */
+        /* Không dùng JS ẩn nữa vì sẽ bị Agent ghi đè. Ta dùng !important đẩy nó ra ngoài màn hình */
+        page-agent, .page-agent-panel-container {
+            position: fixed !important;
+            top: 200vh !important; 
+            left: -9999px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+            z-index: -9999 !important;
+        }
+        /* Cần đảm bảo các mặt nạ (highlight) của nó lúc thao tác DOM vẫn hiện */
+        .page-agent-simulator-mask {
+            pointer-events: none !important;
+            z-index: 99999 !important;
+        }
     </style>
 </head>
 <body class="bg-[#f8fafc] min-h-screen flex flex-col relative selection:bg-blue-200 selection:text-blue-900">
@@ -698,7 +712,8 @@
                     language: 'vi'
                 });
             }
-            document.getElementById('toggleAgentBtn').classList.remove('hidden');
+            // Ẩn nút thủ công vì ta sẽ dùng giọng nói hoàn toàn
+            // document.getElementById('toggleAgentBtn').classList.remove('hidden');
         }
 
         document.getElementById('toggleAgentBtn').addEventListener('click', () => {
@@ -707,20 +722,6 @@
                 if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
             }
         });
-
-        // ✨ ẨN HOÀN TOÀN PAGE AGENT KHỎI MÀN HÌNH CHÍNH
-        setInterval(() => {
-            const host = document.querySelector('page-agent') || document.querySelector('.page-agent-panel-container');
-            if (host) {
-                host.style.position = 'fixed';
-                // Đẩy hẳn cái khung giao diện xuống dưới cùng của màn hình, trong suốt và không chạm được
-                host.style.top = '100vh';
-                host.style.left = '0';
-                host.style.opacity = '0';
-                host.style.pointerEvents = 'none';
-                host.style.zIndex = '-9999';
-            }
-        }, 300);
 
         // Khởi động
         window.onload = function() {
@@ -1101,7 +1102,6 @@
             };
             
             recognition.onerror = function(event) {
-                // Bỏ qua lỗi rác và để onend tự bật lại
                 console.log("Mic error:", event.error);
             };
 
@@ -1143,7 +1143,7 @@
         }
 
         function handleVoiceCommand(cmd) {
-            // Lệnh hệ thống (chạy ngay lập tức không qua AI Agent)
+            // Lệnh hệ thống
             if (cmd.includes('đọc tự động') || cmd.includes('bắt đầu đọc') || cmd.includes('cuộn trang') || cmd.includes('trôi màn hình')) {
                 if (!window.isAutoScrolling) window.toggleAutoScroll();
                 return;
@@ -1157,7 +1157,7 @@
                 return;
             }
 
-            // Nếu là các lệnh khác, chuyển cho PageAgent xử lý ngầm
+            // Gửi đi lệnh tự do cho AI Agent
             sendToPageAgent(cmd);
         }
 
@@ -1169,53 +1169,61 @@
             }
             const root = host.shadowRoot || host;
             
-            const input = root.querySelector('input[type="text"]') || root.querySelector('textarea') || root.querySelector('[contenteditable="true"]');
-            if (input) {
-                // Focus vào input trước khi điền
-                input.focus();
-                
-                // Dùng Native Value Setter để vượt qua lớp kiểm soát State của React/Vue
-                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-                const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-                
-                if (input.tagName === 'INPUT' && nativeInputValueSetter) {
-                    nativeInputValueSetter.call(input, text);
-                } else if (input.tagName === 'TEXTAREA' && nativeTextAreaValueSetter) {
-                    nativeTextAreaValueSetter.call(input, text);
-                } else {
-                    input.value = text; // Dự phòng
-                    input.innerText = text; 
-                }
-
-                // Bắn event composed: true để xuyên Shadow DOM cho framework nhận biết
-                input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-
-                // Thêm một độ trễ nhỏ (150ms) để Framework kiệp cập nhật State rồi mới bấm gửi
-                setTimeout(() => {
-                    const form = input.closest('form');
-                    if (form) {
-                        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true, composed: true }));
-                        const submitBtn = form.querySelector('button[type="submit"]');
-                        if (submitBtn) submitBtn.click();
-                    } else {
-                        const buttons = Array.from(root.querySelectorAll('button'));
-                        let sendBtn = buttons.find(b => b.type === 'submit' || b.innerHTML.includes('send') || b.querySelector('svg'));
-                        if (!sendBtn && buttons.length > 0) sendBtn = buttons[buttons.length - 1]; 
-
-                        if (sendBtn) {
-                            sendBtn.click();
-                        } else {
-                            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true, composed: true }));
-                            input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true, composed: true }));
-                        }
-                    }
-                    showToast("🤖 Đang chạy lệnh ngầm: " + text);
-                }, 150);
-                
-            } else {
-                showToast("⚠️ Không tìm thấy khung nhập lệnh của Agent.");
+            // 1. Quét tìm mọi loại ô nhập liệu có thể
+            let input = root.querySelector('textarea, input[type="text"], input[type="search"]') || root.querySelector('[contenteditable="true"]');
+            if (!input) {
+                showToast("⚠️ Không tìm thấy ô nhập lệnh.");
+                return;
             }
+
+            // 2. Focus vào ô
+            input.focus();
+            
+            // 3. Gán chữ bằng Native Setter để qua mặt React/Vue state
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+            const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+            
+            if (input.tagName === 'INPUT' && nativeInputValueSetter) {
+                nativeInputValueSetter.call(input, text);
+            } else if (input.tagName === 'TEXTAREA' && nativeTextAreaValueSetter) {
+                nativeTextAreaValueSetter.call(input, text);
+            } else {
+                input.value = text;
+                input.innerText = text;
+                input.textContent = text;
+            }
+
+            // 4. Giả lập chuỗi sự kiện của người thật với composed = true (đi xuyên Shadow DOM)
+            const events = ['keydown', 'keypress', 'input', 'change', 'keyup'];
+            events.forEach(eventType => {
+                let event;
+                if (eventType.startsWith('key')) {
+                    event = new KeyboardEvent(eventType, { key: 'a', bubbles: true, composed: true });
+                } else {
+                    event = new Event(eventType, { bubbles: true, composed: true });
+                }
+                input.dispatchEvent(event);
+            });
+
+            // 5. Chờ 300ms cho UI Framework kịp lưu state mới, sau đó bấm nút Gửi
+            setTimeout(() => {
+                const buttons = Array.from(root.querySelectorAll('button, [role="button"]'));
+                // Quét tìm nút Gửi (icon máy bay giấy, chữ send...)
+                let sendBtn = buttons.find(b => b.type === 'submit' || b.innerHTML.includes('send') || b.innerHTML.includes('paper-plane') || b.innerHTML.includes('M2.01 21L23 12'));
+                if (!sendBtn && buttons.length > 0) sendBtn = buttons[buttons.length - 1]; // Lấy nút cuối làm dự phòng
+
+                if (sendBtn && !sendBtn.disabled) {
+                    sendBtn.click();
+                } else {
+                    // Giả lập phím Enter nếu không có nút Submit
+                    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
+                    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
+                    
+                    const form = input.closest('form');
+                    if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true, composed: true }));
+                }
+                showToast("🤖 Đã giao việc cho Agent: " + text);
+            }, 300);
         }
 
     </script>
