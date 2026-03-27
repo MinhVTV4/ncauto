@@ -7,9 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
-    <!-- Tích hợp thư viện PageAgent trực tiếp -->
-    <script src="https://cdn.jsdelivr.net/npm/page-agent@1.6.2/dist/iife/page-agent.demo.js"></script>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -120,9 +117,14 @@
                 <span>☁️</span><span class="hidden md:inline">Lịch sử</span>
             </button>
             
-            <!-- ✨ Nút kích hoạt Agent -->
-            <button id="toggleAgentBtn" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+            <!-- ✨ Nút kích hoạt Agent đã thêm aria-label -->
+            <button id="toggleAgentBtn" aria-label="Bật tắt Trợ lý Web AI" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
                 <span>🤖</span><span class="hidden md:inline">Trợ lý Web</span>
+            </button>
+
+            <!-- ✨ Nút Tự động đọc -->
+            <button id="autoScrollBtn" aria-label="Bật tắt Đọc tự động" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+                <span id="autoScrollIcon">⬇️</span><span id="autoScrollText" class="hidden md:inline">Đọc tự động</span>
             </button>
 
             <button id="openChatBtn" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
@@ -309,6 +311,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Tích hợp thư viện PageAgent trực tiếp (Được dời xuống cuối body để tránh lỗi DOM null) -->
+    <script src="https://cdn.jsdelivr.net/npm/page-agent@1.6.2/dist/iife/page-agent.demo.js"></script>
 
     <script type="module">
         import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -774,6 +779,7 @@
             contentArea.innerHTML = article.formattedHtml; summaryArea.innerHTML = article.summaryHtml; summaryArea.classList.remove('hidden');
             chatMessages = article.chatMessages || []; document.getElementById('chatHistory').innerHTML = article.chatHtml || '';
             showScreen('reading'); newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden');
+            document.getElementById('autoScrollBtn').classList.remove('hidden');
             closeHistoryModal();
         };
 
@@ -833,6 +839,7 @@
             
             newReadBtn.classList.remove('hidden'); 
             document.getElementById('openChatBtn').classList.remove('hidden');
+            document.getElementById('autoScrollBtn').classList.remove('hidden');
 
             try {
                 const payload = {
@@ -869,6 +876,7 @@
 
             currentArticleId = Date.now().toString(); showScreen('loading');
             newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden');
+            document.getElementById('autoScrollBtn').classList.remove('hidden');
 
             try {
                 const formatPrompt = `Bạn là biên tập viên. Dọn dẹp, thêm Heading, Bold, List bằng Markdown cho văn bản sau. TUYỆT ĐỐI GIỮ NGUYÊN 100% NỘI DUNG. Không bọc trong code block.\n\n"""\n${rawText}\n"""`;
@@ -880,9 +888,11 @@
         });
 
         newReadBtn.addEventListener('click', () => {
+            if (window.isAutoScrolling) window.toggleAutoScroll();
             currentArticleId = null; mainInput.value = ''; document.getElementById('researchTopic').value = ''; contentArea.innerHTML = ''; summaryArea.innerHTML = ''; summaryArea.classList.add('hidden');
             globalFormattedText = ''; floatingMenu.classList.remove('active'); showScreen('input');
             newReadBtn.classList.add('hidden'); document.getElementById('openChatBtn').classList.add('hidden'); document.getElementById('chatDrawer').classList.add('translate-x-full');
+            document.getElementById('autoScrollBtn').classList.add('hidden');
             clearQuote(); resetChatHistory();
         });
 
@@ -1004,6 +1014,56 @@
                 resultBox.appendChild(footerDiv); autoSave();
             } catch (error) { document.getElementById(`content-${resultBoxId}`).innerHTML = `<p class="text-red-600 font-semibold">Lỗi phân tích: ${error.message}</p>`; }
         };
+
+        // ==========================================
+        // 6. TÍNH NĂNG ĐỌC TỰ ĐỘNG (AUTO-SCROLL)
+        // ==========================================
+        window.isAutoScrolling = false;
+        window.scrollAnimationId = null;
+        window.scrollSpeed = 0.8; // Tốc độ cuộn (pixel mỗi frame)
+
+        window.autoScrollStep = function() {
+            window.scrollBy(0, window.scrollSpeed);
+            // Kiểm tra nếu đã cuộn đến cuối trang (sai số 2px)
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2) {
+                window.toggleAutoScroll();
+                return;
+            }
+            window.scrollAnimationId = requestAnimationFrame(window.autoScrollStep);
+        };
+
+        window.toggleAutoScroll = function() {
+            const btnIcon = document.getElementById('autoScrollIcon');
+            const btnText = document.getElementById('autoScrollText');
+            const autoScrollBtn = document.getElementById('autoScrollBtn');
+            
+            if (window.isAutoScrolling) {
+                // Dừng cuộn
+                cancelAnimationFrame(window.scrollAnimationId);
+                window.isAutoScrolling = false;
+                btnIcon.textContent = "⬇️";
+                btnText.textContent = "Đọc tự động";
+                autoScrollBtn.classList.replace('bg-rose-50', 'bg-emerald-50');
+                autoScrollBtn.classList.replace('text-rose-700', 'text-emerald-700');
+                autoScrollBtn.classList.replace('border-rose-200', 'border-emerald-200');
+            } else {
+                // Bắt đầu cuộn
+                window.isAutoScrolling = true;
+                btnIcon.textContent = "⏸️";
+                btnText.textContent = "Dừng đọc";
+                autoScrollBtn.classList.replace('bg-emerald-50', 'bg-rose-50');
+                autoScrollBtn.classList.replace('text-emerald-700', 'text-rose-700');
+                autoScrollBtn.classList.replace('border-emerald-200', 'border-rose-200');
+                window.scrollAnimationId = requestAnimationFrame(window.autoScrollStep);
+            }
+        };
+
+        document.getElementById('autoScrollBtn').addEventListener('click', window.toggleAutoScroll);
+        
+        // Tạm dừng cuộn tự động khi người dùng tự cuộn tay hoặc vuốt màn hình
+        window.addEventListener('wheel', () => { if (window.isAutoScrolling) window.toggleAutoScroll(); }, { passive: true });
+        window.addEventListener('touchstart', () => { if (window.isAutoScrolling) window.toggleAutoScroll(); }, { passive: true });
+
     </script>
 </body>
 </html>
