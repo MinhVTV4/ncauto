@@ -95,7 +95,7 @@
             </button>
             
             <div id="userInfo" class="hidden flex items-center gap-2 bg-slate-100 p-1 pr-3 rounded-full cursor-pointer hover:bg-slate-200 transition" onclick="toggleLogoutMenu()">
-                <img id="userAvatar" src="" class="w-7 h-7 md:w-8 md:h-8 rounded-full border border-slate-200">
+                <img id="userAvatar" src="" class="w-7 h-7 md:w-8 md:h-8 rounded-full border border-slate-200" alt="User Avatar">
                 <span id="userName" class="text-xs font-semibold text-slate-700 hidden md:inline"></span>
             </div>
 
@@ -117,12 +117,10 @@
                 <span>☁️</span><span class="hidden md:inline">Lịch sử</span>
             </button>
             
-            <!-- ✨ Nút kích hoạt Agent đã thêm aria-label -->
             <button id="toggleAgentBtn" aria-label="Bật tắt Trợ lý Web AI" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
                 <span>🤖</span><span class="hidden md:inline">Trợ lý Web</span>
             </button>
 
-            <!-- ✨ Nút Tự động đọc -->
             <button id="autoScrollBtn" aria-label="Bật tắt Đọc tự động" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
                 <span id="autoScrollIcon">⬇️</span><span id="autoScrollText" class="hidden md:inline">Đọc tự động</span>
             </button>
@@ -149,6 +147,7 @@
                 <button id="tabBtn2" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">🌍 Nghiên cứu AI</button>
             </div>
 
+            <!-- Tab Dán Tài Liệu -->
             <div id="tabContent1" class="w-full">
                 <h2 class="text-lg md:text-xl font-bold mb-4 text-slate-800">Dán nội dung bài viết / tài liệu vào đây:</h2>
                 <textarea id="mainInput" class="w-full h-48 md:h-64 p-4 md:p-5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-slate-700 md:text-lg leading-relaxed shadow-inner placeholder-slate-400 font-sans" placeholder="Ví dụ: Copy một bài báo dài, một hợp đồng khó hiểu..."></textarea>
@@ -160,25 +159,16 @@
                 </div>
             </div>
 
+            <!-- Tab Nghiên cứu AI (Cập nhật Basic Research) -->
             <div id="tabContent2" class="w-full hidden flex-col">
                 <h2 class="text-lg md:text-xl font-bold mb-4 text-slate-800">Chủ đề bạn muốn nghiên cứu:</h2>
                 <input type="text" id="researchTopic" class="w-full p-4 md:p-5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 md:text-lg shadow-inner placeholder-slate-400" placeholder="VD: Tác động của trí tuệ nhân tạo đến thị trường việc làm 2026...">
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                    <label class="cursor-pointer">
-                        <input type="radio" name="researchMode" value="short" class="peer sr-only" checked>
-                        <div class="p-4 border border-slate-200 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:ring-1 peer-checked:ring-blue-500 transition-all">
-                            <h3 class="font-bold text-blue-800 text-sm mb-1">⚡ Tổng quan Ngắn gọn</h3>
-                            <p class="text-xs text-slate-500">~500 chữ. Đọc nhanh, tóm tắt tin tức cốt lõi mới nhất.</p>
-                        </div>
-                    </label>
-                    <label class="cursor-pointer">
-                        <input type="radio" name="researchMode" value="deep" class="peer sr-only">
-                        <div class="p-4 border border-slate-200 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:ring-1 peer-checked:ring-blue-500 transition-all">
-                            <h3 class="font-bold text-blue-800 text-sm mb-1">🔬 Phân tích Chuyên sâu</h3>
-                            <p class="text-xs text-slate-500">~1500 chữ. Đa góc nhìn, bối cảnh, dự báo & trích dẫn nguồn.</p>
-                        </div>
-                    </label>
+                <div class="mt-4 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
+                    <p class="text-sm text-blue-800 flex items-start gap-2">
+                        <span class="mt-0.5">💡</span> 
+                        <span>AI sẽ tự động rà soát dữ liệu mới nhất qua Google, phân tích bối cảnh, đánh giá đa chiều và tổng hợp thành một báo cáo nghiên cứu hoàn chỉnh kèm trích dẫn nguồn.</span>
+                    </p>
                 </div>
 
                 <div class="mt-6 flex justify-end">
@@ -312,7 +302,7 @@
         </div>
     </div>
 
-    <!-- Tích hợp thư viện PageAgent trực tiếp (Được dời xuống cuối body để tránh lỗi DOM null) -->
+    <!-- Tích hợp thư viện PageAgent trực tiếp -->
     <script src="https://cdn.jsdelivr.net/npm/page-agent@1.6.2/dist/iife/page-agent.demo.js"></script>
 
     <script type="module">
@@ -427,7 +417,6 @@
                 
                 document.getElementById('statusText').innerHTML = '<span class="text-green-600 text-lg">●</span> Động cơ AI Sẵn sàng';
                 
-                // ✨ KHỞI TẠO PAGE AGENT NGAY KHI AI SẴN SÀNG
                 setTimeout(initPageAgent, 1000);
 
                 return true;
@@ -626,12 +615,11 @@
         }
 
         // ==========================================
-        // ✨ TÍCH HỢP PAGE AGENT (Bộ chặn và định tuyến AI)
+        // TÍCH HỢP PAGE AGENT (Bộ chặn và định tuyến AI)
         // ==========================================
         let pageAgentInstance = null;
         const FAKE_AGENT_URL = 'https://deepread-fake-agent-api/v1/chat/completions';
 
-        // Đánh chặn lệnh gọi API từ PageAgent và đẩy thẳng vào core AI của DeepRead
         const originalFetch = window.fetch;
         window.fetch = async function(...args) {
             const url = args[0];
@@ -643,7 +631,6 @@
                     let geminiContents = [];
                     let sysPrompt = "";
 
-                    // Định tuyến từ định dạng OpenAI sang Gemini Format
                     (body.messages || []).forEach(msg => {
                         if (msg.role === 'system') {
                             sysPrompt += msg.content + "\n";
@@ -655,16 +642,13 @@
                         }
                     });
 
-                    // Gắn System Prompt vào câu đầu tiên (vì Firebase Vertex AI cơ bản ít hỗ trợ param system_instruction)
                     if (sysPrompt && geminiContents.length > 0 && geminiContents[0].role === 'user') {
                         geminiContents[0].parts[0].text = `[SYSTEM INSTRUCTION CỦA AGENT]\n${sysPrompt}\n\n[LỆNH USER / DOM HIỆN TẠI]\n${geminiContents[0].parts[0].text}`;
                     }
 
-                    // Kích hoạt Core AI (Tự động hưởng lợi từ Auto-Fallback và ví khóa Firebase)
                     const result = await executeAITask('chat', { contents: geminiContents });
                     const aiText = result.response.text();
 
-                    // Đóng gói trả về giống y hệt OpenAI để PageAgent không phát hiện ra
                     const mockOpenAIResponse = {
                         id: "chatcmpl-" + Date.now(),
                         object: "chat.completion",
@@ -681,20 +665,15 @@
                     return new Response(JSON.stringify({ error: { message: error.message } }), { status: 500 });
                 }
             }
-            // Các fetch khác (Firebase, etc) thì pass qua bình thường
             return originalFetch.apply(this, args);
         };
 
-        // Hàm khởi tạo Agent
         function initPageAgent() {
-            if (!window.PageAgent) {
-                console.warn("Thư viện PageAgent chưa sẵn sàng.");
-                return;
-            }
+            if (!window.PageAgent) return;
             if (!pageAgentInstance) {
                 pageAgentInstance = new window.PageAgent({
                     model: 'gemini-3.1-flash-lite-preview',
-                    baseURL: 'https://deepread-fake-agent-api/v1', // URL ảo sẽ bị chặn lại bởi interceptor
+                    baseURL: 'https://deepread-fake-agent-api/v1', 
                     apiKey: 'fake-bypassed-key',
                     language: 'vi'
                 });
@@ -702,17 +681,12 @@
             document.getElementById('toggleAgentBtn').classList.remove('hidden');
         }
 
-        // Sự kiện Bật/Tắt UI của Agent
         document.getElementById('toggleAgentBtn').addEventListener('click', () => {
             if (pageAgentInstance) {
-                // PageAgent gen ra class css, ta dùng nó để toggle nếu hàm toggle ko rõ
                 const panel = document.querySelector('.page-agent-panel-container');
-                if (panel) {
-                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-                }
+                if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
             }
         });
-
 
         // Khởi động
         window.onload = function() {
@@ -823,13 +797,17 @@
             const topic = document.getElementById('researchTopic').value.trim();
             if (!topic) return alert("Vui lòng nhập chủ đề bạn muốn nghiên cứu!");
 
-            const mode = document.querySelector('input[name="researchMode"]:checked').value;
-            let prompt = "";
-            if (mode === 'short') {
-                prompt = `Hãy tìm kiếm thông tin mới nhất trên Google về: "${topic}". Đóng vai trò là một nhà báo, viết một bản tin tổng quan ngắn gọn (khoảng 500 chữ). Cấu trúc gồm: Mở đầu, Các điểm chính (gạch đầu dòng), và Kết luận. Yêu cầu định dạng Markdown đẹp mắt và chèn link nguồn bài viết tham khảo ở cuối bài.`;
-            } else {
-                prompt = `Hãy tìm kiếm thông tin mới nhất trên Google về: "${topic}". Đóng vai trò là một chuyên gia phân tích chiến lược, viết một bài nghiên cứu chuyên sâu (trên 1500 chữ). Phân tích đa chiều: Bối cảnh, Lợi ích/Rủi ro, Nguyên nhân sâu xa, và Dự báo tương lai. Yêu cầu văn phong học thuật, định dạng Markdown rõ ràng và CÓ DANH SÁCH NGUỒN TRÍCH DẪN (kèm link) minh bạch ở cuối bài.`;
-            }
+            // Cập nhật Prompt Nghiên cứu cơ bản
+            const prompt = `Đóng vai trò là một Chuyên gia phân tích độc lập / Nhà nghiên cứu. Hãy tìm kiếm thông tin mới nhất trên Google về: "${topic}". 
+Viết một báo cáo nghiên cứu cơ bản, khách quan và chuyên sâu. Độ dài tự động điều chỉnh linh hoạt dựa trên lượng thông tin thu thập được. Văn phong học thuật, mạch lạc.
+
+Cấu trúc báo cáo bắt buộc bao gồm các phần sau, sử dụng định dạng thẻ Markdown (H1, H2, H3, Bullet points) cho rõ ràng:
+1. **Tóm tắt điều hành (Executive Summary):** 1-2 đoạn ngắn tóm tắt nhanh gọn nhất toàn bộ vấn đề.
+2. **Bối cảnh & Đặt vấn đề (Background/Context):** Tại sao chủ đề này lại quan trọng ở thời điểm hiện tại? Lịch sử hoặc nguyên nhân hình thành vấn đề là gì?
+3. **Phân tích cốt lõi (Core Analysis):** Đi sâu vào các số liệu, xu hướng hiện tại, và các sự kiện chính.
+4. **Góc nhìn đa chiều (Multidimensional Evaluation):** Đánh giá khách quan các mặt: Cơ hội - Thách thức, hoặc Ưu điểm - Nhược điểm.
+5. **Kết luận & Dự báo (Conclusion & Outlook):** Chốt lại vấn đề và đưa ra dự báo xu hướng trong tương lai gần.
+6. **Nguồn tham khảo (References):** BẮT BUỘC liệt kê danh sách các Nguồn URL đã tham khảo từ kết quả tìm kiếm để đảm bảo tính minh bạch.`;
 
             currentArticleId = Date.now().toString(); 
             
@@ -1020,11 +998,10 @@
         // ==========================================
         window.isAutoScrolling = false;
         window.scrollAnimationId = null;
-        window.scrollSpeed = 0.8; // Tốc độ cuộn (pixel mỗi frame)
+        window.scrollSpeed = 0.8; 
 
         window.autoScrollStep = function() {
             window.scrollBy(0, window.scrollSpeed);
-            // Kiểm tra nếu đã cuộn đến cuối trang (sai số 2px)
             if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2) {
                 window.toggleAutoScroll();
                 return;
@@ -1038,7 +1015,6 @@
             const autoScrollBtn = document.getElementById('autoScrollBtn');
             
             if (window.isAutoScrolling) {
-                // Dừng cuộn
                 cancelAnimationFrame(window.scrollAnimationId);
                 window.isAutoScrolling = false;
                 btnIcon.textContent = "⬇️";
@@ -1047,7 +1023,6 @@
                 autoScrollBtn.classList.replace('text-rose-700', 'text-emerald-700');
                 autoScrollBtn.classList.replace('border-rose-200', 'border-emerald-200');
             } else {
-                // Bắt đầu cuộn
                 window.isAutoScrolling = true;
                 btnIcon.textContent = "⏸️";
                 btnText.textContent = "Dừng đọc";
@@ -1060,7 +1035,6 @@
 
         document.getElementById('autoScrollBtn').addEventListener('click', window.toggleAutoScroll);
         
-        // Tạm dừng cuộn tự động khi người dùng tự cuộn tay hoặc vuốt màn hình
         window.addEventListener('wheel', () => { if (window.isAutoScrolling) window.toggleAutoScroll(); }, { passive: true });
         window.addEventListener('touchstart', () => { if (window.isAutoScrolling) window.toggleAutoScroll(); }, { passive: true });
 
