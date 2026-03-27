@@ -708,35 +708,19 @@
             }
         });
 
-        // ✨ ẨN CHI TIẾT PAGE AGENT ĐỂ KHÔNG CHE MÀN HÌNH
+        // ✨ ẨN HOÀN TOÀN PAGE AGENT KHỎI MÀN HÌNH CHÍNH
         setInterval(() => {
             const host = document.querySelector('page-agent') || document.querySelector('.page-agent-panel-container');
             if (host) {
-                host.style.maxHeight = '80px'; 
-                host.style.overflow = 'hidden';
-                host.style.opacity = '0.9';
-                host.style.bottom = '20px'; // Đẩy nó gọn xuống dưới
-                
-                const root = host.shadowRoot || host;
-                if (root) {
-                    let style = root.querySelector('#silence-agent-css');
-                    if (!style) {
-                        style = document.createElement('style');
-                        style.id = 'silence-agent-css';
-                        // Ẩn lịch sử chat và các bước chi tiết
-                        style.innerHTML = `
-                            .message-list, .chat-history, [class*="history"], [class*="message"], [class*="detail"], [class*="step"], [class*="log"] {
-                                display: none !important;
-                            }
-                            [class*="input"], form {
-                                display: flex !important;
-                            }
-                        `;
-                        root.appendChild(style);
-                    }
-                }
+                host.style.position = 'fixed';
+                // Đẩy hẳn cái khung giao diện xuống dưới cùng của màn hình, trong suốt và không chạm được
+                host.style.top = '100vh';
+                host.style.left = '0';
+                host.style.opacity = '0';
+                host.style.pointerEvents = 'none';
+                host.style.zIndex = '-9999';
             }
-        }, 1000);
+        }, 300);
 
         // Khởi động
         window.onload = function() {
@@ -1178,7 +1162,6 @@
         }
 
         function sendToPageAgent(text) {
-            // Đẩy lệnh Text vào DOM của PageAgent
             const host = document.querySelector('page-agent') || document.querySelector('.page-agent-panel-container');
             if (!host) {
                 showToast("⚠️ Trợ lý Agent chưa sẵn sàng.");
@@ -1188,29 +1171,50 @@
             
             const input = root.querySelector('input[type="text"]') || root.querySelector('textarea') || root.querySelector('[contenteditable="true"]');
             if (input) {
-                if (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA') {
-                    input.value = text;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                // Focus vào input trước khi điền
+                input.focus();
+                
+                // Dùng Native Value Setter để vượt qua lớp kiểm soát State của React/Vue
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+                const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+                
+                if (input.tagName === 'INPUT' && nativeInputValueSetter) {
+                    nativeInputValueSetter.call(input, text);
+                } else if (input.tagName === 'TEXTAREA' && nativeTextAreaValueSetter) {
+                    nativeTextAreaValueSetter.call(input, text);
                 } else {
-                    input.innerText = text;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.value = text; // Dự phòng
+                    input.innerText = text; 
                 }
 
-                // Cố gắng tìm nút gửi (Enter)
-                const buttons = root.querySelectorAll('button');
-                let sendBtn = null;
-                buttons.forEach(btn => {
-                    if(btn.type === 'submit' || btn.innerHTML.includes('send') || btn.innerHTML.includes('svg')) {
-                        sendBtn = btn;
+                // Bắn event composed: true để xuyên Shadow DOM cho framework nhận biết
+                input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+
+                // Thêm một độ trễ nhỏ (150ms) để Framework kiệp cập nhật State rồi mới bấm gửi
+                setTimeout(() => {
+                    const form = input.closest('form');
+                    if (form) {
+                        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true, composed: true }));
+                        const submitBtn = form.querySelector('button[type="submit"]');
+                        if (submitBtn) submitBtn.click();
+                    } else {
+                        const buttons = Array.from(root.querySelectorAll('button'));
+                        let sendBtn = buttons.find(b => b.type === 'submit' || b.innerHTML.includes('send') || b.querySelector('svg'));
+                        if (!sendBtn && buttons.length > 0) sendBtn = buttons[buttons.length - 1]; 
+
+                        if (sendBtn) {
+                            sendBtn.click();
+                        } else {
+                            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true, composed: true }));
+                            input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true, composed: true }));
+                        }
                     }
-                });
-                if (!sendBtn && buttons.length > 0) sendBtn = buttons[buttons.length - 1]; 
-
-                if (sendBtn) {
-                    sendBtn.click();
-                } else {
-                    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
-                }
+                    showToast("🤖 Đang chạy lệnh ngầm: " + text);
+                }, 150);
+                
+            } else {
+                showToast("⚠️ Không tìm thấy khung nhập lệnh của Agent.");
             }
         }
 
