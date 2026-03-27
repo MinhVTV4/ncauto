@@ -116,10 +116,6 @@
             <button id="btnHistory" onclick="openHistoryModal()" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
                 <span>☁️</span><span class="hidden md:inline">Lịch sử</span>
             </button>
-            
-            <button id="toggleAgentBtn" aria-label="Bật tắt Trợ lý Web AI" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
-                <span>🤖</span><span class="hidden md:inline">Trợ lý Web</span>
-            </button>
 
             <button id="autoScrollBtn" aria-label="Bật tắt Đọc tự động" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
                 <span id="autoScrollIcon">⬇️</span><span id="autoScrollText" class="hidden md:inline">Đọc tự động</span>
@@ -678,15 +674,7 @@
                     language: 'vi'
                 });
             }
-            document.getElementById('toggleAgentBtn').classList.remove('hidden');
         }
-
-        document.getElementById('toggleAgentBtn').addEventListener('click', () => {
-            if (pageAgentInstance) {
-                const panel = document.querySelector('.page-agent-panel-container');
-                if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-            }
-        });
 
         // Khởi động
         window.onload = function() {
@@ -797,7 +785,7 @@
             const topic = document.getElementById('researchTopic').value.trim();
             if (!topic) return alert("Vui lòng nhập chủ đề bạn muốn nghiên cứu!");
 
-            // Cập nhật Prompt Nghiên cứu cơ bản
+            // Cập nhật Prompt Nghiên cứu cơ bản - Đã ẩn URL thô vào siêu liên kết
             const prompt = `Đóng vai trò là một Chuyên gia phân tích độc lập / Nhà nghiên cứu. Hãy tìm kiếm thông tin mới nhất trên Google về: "${topic}". 
 Viết một báo cáo nghiên cứu cơ bản, khách quan và chuyên sâu. Độ dài tự động điều chỉnh linh hoạt dựa trên lượng thông tin thu thập được. Văn phong học thuật, mạch lạc.
 
@@ -807,7 +795,7 @@ Cấu trúc báo cáo bắt buộc bao gồm các phần sau, sử dụng địn
 3. **Phân tích cốt lõi (Core Analysis):** Đi sâu vào các số liệu, xu hướng hiện tại, và các sự kiện chính.
 4. **Góc nhìn đa chiều (Multidimensional Evaluation):** Đánh giá khách quan các mặt: Cơ hội - Thách thức, hoặc Ưu điểm - Nhược điểm.
 5. **Kết luận & Dự báo (Conclusion & Outlook):** Chốt lại vấn đề và đưa ra dự báo xu hướng trong tương lai gần.
-6. **Nguồn tham khảo (References):** BẮT BUỘC liệt kê danh sách các Nguồn URL đã tham khảo từ kết quả tìm kiếm để đảm bảo tính minh bạch.`;
+6. **Nguồn tham khảo (References):** BẮT BUỘC liệt kê danh sách Nguồn tham khảo bằng cú pháp siêu liên kết Markdown: [Tên Nguồn/Tiêu đề bài viết](URL). TUYỆT ĐỐI KHÔNG để lộ đường link URL thô ra ngoài văn bản nhằm giữ giao diện gọn gàng và đẹp mắt.`;
 
             currentArticleId = Date.now().toString(); 
             
