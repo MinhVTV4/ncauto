@@ -71,12 +71,9 @@
         body.has-fullscreen { overflow: hidden !important; }
         #historyModal, #setupModal { backdrop-filter: blur(4px); }
         
-        /* CSS cho Toggle Switch (Nút gạt) */
+        /* CSS cho Toggle Switch */
         .toggle-checkbox:checked { right: 0; border-color: #2563EB; }
         .toggle-checkbox:checked + .toggle-label { background-color: #2563EB; }
-
-        /* Tinh chỉnh Z-index cho PageAgent panel nếu cần */
-        .page-agent-panel-container { z-index: 99999 !important; }
     </style>
 </head>
 <body class="bg-[#f8fafc] min-h-screen flex flex-col relative selection:bg-blue-200 selection:text-blue-900">
@@ -121,8 +118,9 @@
                 <span id="autoScrollIcon">⬇️</span><span id="autoScrollText" class="hidden md:inline">Đọc tự động</span>
             </button>
 
+            <!-- Nút mở khung chat chính -->
             <button id="openChatBtn" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
-                <span>💬</span><span class="hidden md:inline">Chat AI</span>
+                <span>💬</span><span class="hidden md:inline">Chat & Thao tác</span>
             </button>
             <button id="newReadBtn" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
@@ -143,7 +141,6 @@
                 <button id="tabBtn2" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">🌍 Nghiên cứu AI</button>
             </div>
 
-            <!-- Tab Dán Tài Liệu -->
             <div id="tabContent1" class="w-full">
                 <h2 class="text-lg md:text-xl font-bold mb-4 text-slate-800">Dán nội dung bài viết / tài liệu vào đây:</h2>
                 <textarea id="mainInput" class="w-full h-48 md:h-64 p-4 md:p-5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-slate-700 md:text-lg leading-relaxed shadow-inner placeholder-slate-400 font-sans" placeholder="Ví dụ: Copy một bài báo dài, một hợp đồng khó hiểu..."></textarea>
@@ -155,7 +152,6 @@
                 </div>
             </div>
 
-            <!-- Tab Nghiên cứu AI (Cập nhật Basic Research) -->
             <div id="tabContent2" class="w-full hidden flex-col">
                 <h2 class="text-lg md:text-xl font-bold mb-4 text-slate-800">Chủ đề bạn muốn nghiên cứu:</h2>
                 <input type="text" id="researchTopic" class="w-full p-4 md:p-5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 md:text-lg shadow-inner placeholder-slate-400" placeholder="VD: Tác động của trí tuệ nhân tạo đến thị trường việc làm 2026...">
@@ -202,22 +198,39 @@
         <button onclick="quoteToChat()" class="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-700 rounded-md transition-colors text-sm font-medium text-blue-300"><span>💬</span> Hỏi AI</button>
     </div>
 
+    <!-- KHUNG CHAT & AGENT THAO TÁC WEB -->
     <div id="chatDrawer" class="fixed inset-y-0 right-0 w-full md:w-[400px] bg-white shadow-2xl border-l border-slate-200 z-50 transform translate-x-full transition-transform duration-300 flex flex-col pt-16 md:pt-0">
-        <div class="bg-blue-600 text-white p-4 flex justify-between items-center shrink-0 shadow-md z-10">
+        <div class="bg-blue-600 text-white p-4 flex justify-between items-center shrink-0 shadow-md z-10 transition-colors" id="chatHeaderBg">
             <h3 class="font-bold flex items-center gap-2"><span>💬</span> Đồng học AI</h3>
             <button id="closeChatBtn" class="text-white hover:text-blue-200 p-1 bg-white/10 rounded-md transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
-        <div id="chatHistory" class="flex-1 overflow-y-auto p-4 bg-slate-50 text-sm pb-20"></div>
-        <div class="p-3 md:p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] pb-8 md:pb-4">
-            <div id="quotePreview" class="hidden mb-2 p-2 bg-blue-50 border-l-4 border-blue-400 text-xs text-slate-600 rounded-r line-clamp-2 italic relative pr-6">
+        
+        <div id="chatHistory" class="flex-1 overflow-y-auto p-4 bg-slate-50 text-sm pb-20 relative"></div>
+        
+        <div class="p-3 md:p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] pb-8 md:pb-4 relative">
+            
+            <!-- Agent Real-time Banner -->
+            <div id="agentStatusBanner" class="hidden absolute left-4 right-4 -top-12 bg-purple-600/90 backdrop-blur-sm text-white text-xs px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 transform transition-all z-20 border border-purple-400/50">
+                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span id="agentStatusText" class="font-medium tracking-wide">Đang khởi động Trợ lý...</span>
+            </div>
+
+            <div id="quotePreview" class="hidden mb-2 p-2 bg-blue-50 border-l-4 border-blue-400 text-xs text-slate-600 rounded-r line-clamp-2 italic relative pr-6 transition-colors">
                 <button onclick="clearQuote()" class="absolute top-1 right-1 text-slate-400 hover:text-red-500 bg-white rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
                 <span id="quoteText" class="font-medium text-blue-800"></span>
             </div>
-            <div class="flex gap-2 relative">
-                <input type="text" id="chatInput" class="flex-1 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all" placeholder="Nhắn tin cho AI...">
-                <button id="sendChatBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl transition-colors flex items-center justify-center aspect-square disabled:bg-slate-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg></button>
+            
+            <div class="flex gap-2 relative items-center">
+                <!-- Nút bật tắt Agent (UI Mới) -->
+                <button id="toggleAgentModeBtn" class="p-2.5 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-xl transition-all border border-transparent shadow-sm flex items-center justify-center" title="Bật/Tắt chế độ Trợ lý Thao tác Web">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                </button>
+
+                <input type="text" id="chatInput" class="flex-1 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all bg-white shadow-inner" placeholder="Nhắn tin cho AI...">
+                
+                <button id="sendChatBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl transition-all flex items-center justify-center aspect-square disabled:bg-slate-300 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg></button>
             </div>
         </div>
     </div>
@@ -298,7 +311,7 @@
         </div>
     </div>
 
-    <!-- Tích hợp thư viện PageAgent trực tiếp -->
+    <!-- Tích hợp PageAgent qua IIFE (Đã fix lỗi ESM Zod) -->
     <script src="https://cdn.jsdelivr.net/npm/page-agent@1.6.2/dist/iife/page-agent.demo.js"></script>
 
     <script type="module">
@@ -350,7 +363,6 @@
                 document.getElementById('userName').textContent = user.displayName?.split(' ')[0] || 'Tài khoản';
                 btnHistory.classList.remove('hidden');
                 document.getElementById('cloudWarning').classList.add('hidden');
-                
                 document.getElementById('cloudStatusIcon').textContent = "☁️";
                 document.getElementById('cloudStatusText').textContent = "Tài liệu đang được đồng bộ hóa lên Cloud.";
                 document.getElementById('cloudKeyBadge').classList.remove('hidden'); 
@@ -359,12 +371,9 @@
                 if(modalDivider) modalDivider.classList.add('hidden');
 
                 await loadKeyWalletCloud(); 
-
                 if (walletData.keys.length > 0) {
                     document.getElementById('setupModal').classList.add('hidden');
-                    if (document.getElementById('readingScreen').classList.contains('hidden')) {
-                        showScreen('input');
-                    }
+                    if (document.getElementById('readingScreen').classList.contains('hidden')) showScreen('input');
                 }
             } else {
                 loginBtn.classList.remove('hidden');
@@ -372,7 +381,6 @@
                 btnHistory.classList.add('hidden');
                 document.getElementById('logoutMenu').classList.add('hidden');
                 document.getElementById('cloudWarning').classList.remove('hidden');
-                
                 document.getElementById('cloudStatusIcon').textContent = "⚠️";
                 document.getElementById('cloudStatusText').textContent = "Chế độ Ẩn danh. Dữ liệu KHÔNG được lưu lên Cloud.";
                 document.getElementById('cloudKeyBadge').classList.add('hidden');
@@ -412,9 +420,6 @@
                 chatModel = getGenerativeModel(ai, { model: "gemini-3.1-flash-lite-preview" });
                 
                 document.getElementById('statusText').innerHTML = '<span class="text-green-600 text-lg">●</span> Động cơ AI Sẵn sàng';
-                
-                setTimeout(initPageAgent, 1000);
-
                 return true;
             } catch (e) {
                 document.getElementById('statusText').innerHTML = `<span class="text-red-600 text-lg">●</span> Lỗi kết nối AI`;
@@ -425,9 +430,8 @@
         async function loadKeyWalletCloud() {
             try {
                 const docSnap = await getDoc(doc(db, getWalletPath(), 'wallet'));
-                if (docSnap.exists()) {
-                    walletData = docSnap.data();
-                } else {
+                if (docSnap.exists()) walletData = docSnap.data();
+                else {
                     const local = localStorage.getItem(LOCAL_CONFIG_KEY);
                     if (local) walletData = JSON.parse(local);
                     await saveKeyWalletToCloud();
@@ -478,28 +482,9 @@
 
             let html = '';
             walletData.keys.forEach((k, index) => {
-                const badge = k.isActive 
-                    ? `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">ĐANG DÙNG</span>` 
-                    : ``;
-                const btnAction = k.isActive
-                    ? ``
-                    : `<button onclick="switchKey('${k.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-medium transition">Sử dụng</button>`;
-                
-                html += `
-                    <div class="flex items-center justify-between p-3 bg-white border ${k.isActive ? 'border-green-300 ring-1 ring-green-100' : 'border-slate-200'} rounded-lg shadow-sm">
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="font-semibold text-slate-800 text-sm">${k.name}</span>
-                                ${badge}
-                            </div>
-                            <p class="text-[10px] text-slate-400 font-mono truncate w-32 md:w-48">${k.configStr.substring(0, 30)}...</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            ${btnAction}
-                            <button onclick="deleteKey('${k.id}')" class="text-slate-300 hover:text-red-500 p-1" title="Xóa khóa này"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                        </div>
-                    </div>
-                `;
+                const badge = k.isActive ? `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">ĐANG DÙNG</span>` : ``;
+                const btnAction = k.isActive ? `` : `<button onclick="switchKey('${k.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-medium transition">Sử dụng</button>`;
+                html += `<div class="flex items-center justify-between p-3 bg-white border ${k.isActive ? 'border-green-300 ring-1 ring-green-100' : 'border-slate-200'} rounded-lg shadow-sm"><div><div class="flex items-center gap-2 mb-1"><span class="font-semibold text-slate-800 text-sm">${k.name}</span>${badge}</div><p class="text-[10px] text-slate-400 font-mono truncate w-32 md:w-48">${k.configStr.substring(0, 30)}...</p></div><div class="flex items-center gap-2">${btnAction}<button onclick="deleteKey('${k.id}')" class="text-slate-300 hover:text-red-500 p-1" title="Xóa khóa này"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div></div>`;
             });
             listDiv.innerHTML = html;
         }
@@ -512,98 +497,55 @@
                 document.getElementById('walletLoggedOut').classList.remove('hidden');
                 document.getElementById('walletControls').classList.add('hidden');
             }
-            
             document.getElementById('closeSetupBtn').classList.toggle('hidden', walletData.keys.length === 0);
-            renderWalletUI();
-            document.getElementById('setupModal').classList.remove('hidden');
+            renderWalletUI(); document.getElementById('setupModal').classList.remove('hidden');
         };
 
-        window.closeSetupModal = function() {
-            if (walletData.keys.length > 0) document.getElementById('setupModal').classList.add('hidden');
-        };
+        window.closeSetupModal = function() { if (walletData.keys.length > 0) document.getElementById('setupModal').classList.add('hidden'); };
 
         document.getElementById('saveConfigBtn').addEventListener('click', async () => {
             const rawText = document.getElementById('configInputBox').value.trim();
             const nameText = document.getElementById('newKeyName').value.trim() || `Khóa ${walletData.keys.length + 1}`;
-            const errorMsg = document.getElementById('configErrorMsg');
-            errorMsg.classList.add('hidden');
+            const errorMsg = document.getElementById('configErrorMsg'); errorMsg.classList.add('hidden');
 
             try {
                 parseConfigString(rawText);
                 walletData.keys.forEach(k => k.isActive = false);
-                walletData.keys.push({
-                    id: 'key-' + Date.now(),
-                    name: nameText,
-                    configStr: rawText,
-                    isActive: true
-                });
-
-                await saveKeyWallet();
-                activateRunningKey();
-                
-                document.getElementById('configInputBox').value = '';
-                document.getElementById('newKeyName').value = '';
-                
-                if (!document.getElementById('readingScreen').classList.contains('hidden') === false) {
-                    showScreen('input');
-                }
+                walletData.keys.push({ id: 'key-' + Date.now(), name: nameText, configStr: rawText, isActive: true });
+                await saveKeyWallet(); activateRunningKey();
+                document.getElementById('configInputBox').value = ''; document.getElementById('newKeyName').value = '';
+                if (!document.getElementById('readingScreen').classList.contains('hidden') === false) showScreen('input');
                 closeSetupModal();
-            } catch (e) {
-                errorMsg.innerText = "Lỗi cấu hình: " + e.message;
-                errorMsg.classList.remove('hidden');
-            }
+            } catch (e) { errorMsg.innerText = "Lỗi cấu hình: " + e.message; errorMsg.classList.remove('hidden'); }
         });
 
-        window.switchKey = async function(id) {
-            walletData.keys.forEach(k => k.isActive = (k.id === id));
-            await saveKeyWallet();
-            activateRunningKey();
-        };
-
+        window.switchKey = async function(id) { walletData.keys.forEach(k => k.isActive = (k.id === id)); await saveKeyWallet(); activateRunningKey(); };
         window.deleteKey = async function(id) {
             if(!confirm("Bạn có chắc muốn xóa khóa này?")) return;
             const keyToDelete = walletData.keys.find(k => k.id === id);
             walletData.keys = walletData.keys.filter(k => k.id !== id);
-            
-            if (keyToDelete && keyToDelete.isActive && walletData.keys.length > 0) {
-                walletData.keys[0].isActive = true;
-            }
-            
-            await saveKeyWallet();
-            activateRunningKey();
+            if (keyToDelete && keyToDelete.isActive && walletData.keys.length > 0) walletData.keys[0].isActive = true;
+            await saveKeyWallet(); activateRunningKey();
         };
 
-        document.getElementById('autoFallbackToggle').addEventListener('change', async (e) => {
-            walletData.autoFallback = e.target.checked;
-            await saveKeyWallet();
-        });
+        document.getElementById('autoFallbackToggle').addEventListener('change', async (e) => { walletData.autoFallback = e.target.checked; await saveKeyWallet(); });
 
-        // ==========================================
-        // 3. CƠ CHẾ AUTO-FALLBACK 
-        // ==========================================
         async function executeAITask(operationType, payload) {
             let attempts = 0;
             const maxAttempts = walletData.autoFallback ? walletData.keys.length : 1;
-
             while (attempts < maxAttempts) {
                 try {
                     if (!model || !chatModel) throw new Error("AI chưa được khởi tạo");
                     if (operationType === 'text') return await model.generateContent(payload);
                     if (operationType === 'chat') return await chatModel.generateContent(payload);
                 } catch (error) {
-                    attempts++;
-                    console.warn(`Lỗi AI (Lần thử ${attempts}):`, error.message);
-
+                    attempts++; console.warn(`Lỗi AI (Lần thử ${attempts}):`, error.message);
                     if (walletData.autoFallback && attempts < maxAttempts) {
                         document.getElementById('statusText').innerHTML = `<span class="text-amber-500 text-xs">Đang kẹt, tự động đổi khóa...</span>`;
                         let currentIndex = walletData.keys.findIndex(k => k.isActive);
                         let nextIndex = (currentIndex + 1) % walletData.keys.length;
-                        
                         walletData.keys.forEach((k, i) => k.isActive = (i === nextIndex));
-                        await saveKeyWallet();
-                        activateRunningKey();
-                        await new Promise(r => setTimeout(r, 1000));
-                        continue; 
+                        await saveKeyWallet(); activateRunningKey(); await new Promise(r => setTimeout(r, 1000)); continue; 
                     }
                     throw error;
                 }
@@ -611,77 +553,150 @@
         }
 
         // ==========================================
-        // TÍCH HỢP PAGE AGENT (Bộ chặn và định tuyến AI)
+        // 🚀 KIẾN TRÚC MỚI CỦA PAGE AGENT (NHÚNG LÕI VÀO CHAT UI)
         // ==========================================
         let pageAgentInstance = null;
-        const FAKE_AGENT_URL = 'https://deepread-fake-agent-api/v1/chat/completions';
+        let isAgentMode = false; // Biến trạng thái chế độ Terminal
 
+        // Đánh chặn lệnh gọi của PageAgentCore và dịch Tools sang chuẩn Gemini
         const originalFetch = window.fetch;
         window.fetch = async function(...args) {
-            const url = args[0];
-            const options = args[1] || {};
+            const url = args[0]; const options = args[1] || {};
 
             if (typeof url === 'string' && url.includes('deepread-fake-agent-api')) {
                 try {
                     const body = JSON.parse(options.body);
-                    let geminiContents = [];
-                    let sysPrompt = "";
+                    let geminiContents = []; let sysPrompt = "";
 
+                    // Cầu nối OpenAI -> Gemini (Hỗ trợ Tool Call)
                     (body.messages || []).forEach(msg => {
                         if (msg.role === 'system') {
                             sysPrompt += msg.content + "\n";
-                        } else {
+                        } else if (msg.role === 'tool') {
+                            // Kết quả trả về sau khi Agent thao tác trên DOM
+                            geminiContents.push({ role: 'user', parts: [{ text: `[KẾT QUẢ THỰC THI THAO TÁC TRÊN WEB]: ${msg.content}` }] });
+                        } else if (msg.role === 'assistant' && msg.tool_calls) {
+                            // Lệnh yêu cầu thao tác web của mô hình
                             geminiContents.push({
-                                role: msg.role === 'assistant' ? 'model' : 'user',
-                                parts: [{ text: msg.content }]
+                                role: 'model',
+                                parts: msg.tool_calls.map(tc => ({ functionCall: { name: tc.function.name, args: JSON.parse(tc.function.arguments) } }))
                             });
+                        } else {
+                            geminiContents.push({ role: msg.role === 'assistant' ? 'model' : 'user', parts: [{ text: msg.content }] });
                         }
                     });
 
                     if (sysPrompt && geminiContents.length > 0 && geminiContents[0].role === 'user') {
-                        geminiContents[0].parts[0].text = `[SYSTEM INSTRUCTION CỦA AGENT]\n${sysPrompt}\n\n[LỆNH USER / DOM HIỆN TẠI]\n${geminiContents[0].parts[0].text}`;
+                        geminiContents[0].parts[0].text = `[SYSTEM INSTRUCTION CỦA AGENT ĐỂ THAO TÁC WEB]\n${sysPrompt}\n\n[LỆNH USER / DOM HIỆN TẠI]\n${geminiContents[0].parts[0].text}`;
                     }
 
-                    const result = await executeAITask('chat', { contents: geminiContents });
-                    const aiText = result.response.text();
+                    // Chuẩn bị Payload kèm Tools (Để Gemini biết là nó có quyền thao tác web)
+                    const aiPayload = { contents: geminiContents };
+                    if (body.tools && body.tools.length > 0) {
+                        aiPayload.tools = [{
+                            functionDeclarations: body.tools.map(t => ({
+                                name: t.function.name, description: t.function.description, parameters: t.function.parameters
+                            }))
+                        }];
+                    }
 
-                    const mockOpenAIResponse = {
-                        id: "chatcmpl-" + Date.now(),
-                        object: "chat.completion",
-                        created: Date.now(),
-                        model: "gemini-3.1-flash-lite-preview",
-                        choices: [{ index: 0, message: { role: "assistant", content: aiText }, finish_reason: "stop" }]
-                    };
+                    // Bơm vào Động cơ lõi của DeepRead (Hot-swap & Firebase)
+                    const result = await executeAITask('chat', aiPayload);
+                    const candidate = result.response.candidates[0];
+                    const part = candidate.content.parts[0];
 
-                    return new Response(JSON.stringify(mockOpenAIResponse), {
-                        status: 200, headers: { 'Content-Type': 'application/json' }
-                    });
-                } catch (error) {
-                    console.error("Lỗi PageAgent Interceptor:", error);
-                    return new Response(JSON.stringify({ error: { message: error.message } }), { status: 500 });
-                }
+                    const mockOpenAIResponse = { id: "chatcmpl-" + Date.now(), object: "chat.completion", created: Date.now(), model: "gemini-3.1-flash-lite-preview", choices: [{ index: 0, message: {} }] };
+
+                    // Cầu nối ngược: Gemini -> OpenAI (Truyền tool_calls lại cho PageController)
+                    if (part.functionCall) {
+                        mockOpenAIResponse.choices[0].message = {
+                            role: "assistant", content: null,
+                            tool_calls: [{
+                                id: "call_" + Date.now(), type: "function",
+                                function: { name: part.functionCall.name, arguments: JSON.stringify(part.functionCall.args) }
+                            }]
+                        };
+                        mockOpenAIResponse.choices[0].finish_reason = "tool_calls";
+                    } else {
+                        mockOpenAIResponse.choices[0].message = { role: "assistant", content: part.text || "" };
+                        mockOpenAIResponse.choices[0].finish_reason = "stop";
+                    }
+
+                    return new Response(JSON.stringify(mockOpenAIResponse), { status: 200, headers: { 'Content-Type': 'application/json' } });
+                } catch (error) { console.error("Lỗi Interceptor:", error); return new Response(JSON.stringify({ error: { message: error.message } }), { status: 500 }); }
             }
             return originalFetch.apply(this, args);
         };
 
-        function initPageAgent() {
-            if (!window.PageAgent) return;
-            if (!pageAgentInstance) {
+        // Khởi tạo Lõi và kết nối sự kiện Real-time vào Banner UI
+        function initCoreAgent() {
+            if (pageAgentInstance) return;
+            try {
+                // Dùng bản IIFE dựng sẵn để tránh lỗi module ESM (Zod)
                 pageAgentInstance = new window.PageAgent({
-                    model: 'gemini-3.1-flash-lite-preview',
                     baseURL: 'https://deepread-fake-agent-api/v1', 
                     apiKey: 'fake-bypassed-key',
+                    model: 'gemini-3.1-flash-lite-preview',
                     language: 'vi'
                 });
-            }
+
+                // Ẩn UI gốc của PageAgent để dùng UI Custom của DeepRead
+                const style = document.createElement('style');
+                style.innerHTML = '.page-agent-panel-container, page-agent-panel { display: none !important; opacity: 0 !important; pointer-events: none !important; }';
+                document.head.appendChild(style);
+
+                // Xử lý luồng Activity (Sự kiện thời gian thực)
+                pageAgentInstance.addEventListener('activity', (e) => {
+                    const act = e.detail;
+                    const statusEl = document.getElementById('agentStatusText');
+                    
+                    if (act.type === 'thinking') statusEl.textContent = "Đang suy nghĩ quyết định...";
+                    else if (act.type === 'executing') statusEl.textContent = `Đang thao tác: [${act.tool}]...`;
+                    else if (act.type === 'error') statusEl.textContent = `Lỗi: ${act.message}`;
+                    else if (act.type === 'executed') statusEl.textContent = `Vừa xong thao tác: ${act.tool}`;
+                });
+                
+                // Ẩn Banner khi hoàn thành toàn bộ chuỗi nhiệm vụ
+                pageAgentInstance.addEventListener('statuschange', () => {
+                     if(pageAgentInstance.status === 'completed' || pageAgentInstance.status === 'error') {
+                          setTimeout(() => { document.getElementById('agentStatusBanner').classList.add('hidden'); }, 2000);
+                     }
+                });
+            } catch (e) { console.error("Lỗi khởi tạo Agent Core:", e); }
         }
 
-        // Khởi động
-        window.onload = function() {
-            showScreen('input'); 
-            loadKeyWalletLocal();
-            if (walletData.keys.length === 0) openSetup();
-        };
+        // Xử lý nút Chuyển đổi Mode Chat <-> Agent
+        const toggleAgentModeBtn = document.getElementById('toggleAgentModeBtn');
+        const chatHeaderBg = document.getElementById('chatHeaderBg');
+        
+        toggleAgentModeBtn.addEventListener('click', () => {
+            isAgentMode = !isAgentMode;
+            if (isAgentMode) {
+                // UI Chế độ Agent thao tác web
+                toggleAgentModeBtn.classList.replace('text-slate-400', 'text-purple-600');
+                toggleAgentModeBtn.classList.replace('bg-slate-50', 'bg-purple-100');
+                toggleAgentModeBtn.classList.add('border-purple-200');
+                chatInput.placeholder = "Gõ lệnh thao tác (VD: Cuộn xuống dưới, tóm tắt...)";
+                chatInput.classList.replace('focus:border-blue-500', 'focus:border-purple-500');
+                chatInput.classList.replace('focus:ring-blue-100', 'focus:ring-purple-100');
+                document.getElementById('sendChatBtn').classList.replace('bg-blue-600', 'bg-purple-600');
+                document.getElementById('sendChatBtn').classList.replace('hover:bg-blue-700', 'hover:bg-purple-700');
+                chatHeaderBg.classList.replace('bg-blue-600', 'bg-purple-600');
+            } else {
+                // UI Chế độ Chat bình thường
+                toggleAgentModeBtn.classList.replace('text-purple-600', 'text-slate-400');
+                toggleAgentModeBtn.classList.replace('bg-purple-100', 'bg-slate-50');
+                toggleAgentModeBtn.classList.remove('border-purple-200');
+                chatInput.placeholder = "Nhắn tin cho AI...";
+                chatInput.classList.replace('focus:border-purple-500', 'focus:border-blue-500');
+                chatInput.classList.replace('focus:ring-purple-100', 'focus:ring-blue-100');
+                document.getElementById('sendChatBtn').classList.replace('bg-purple-600', 'bg-blue-600');
+                document.getElementById('sendChatBtn').classList.replace('hover:bg-purple-700', 'hover:bg-blue-700');
+                chatHeaderBg.classList.replace('bg-purple-600', 'bg-blue-600');
+            }
+        });
+
+        window.onload = function() { showScreen('input'); loadKeyWalletLocal(); if (walletData.keys.length === 0) openSetup(); };
 
         // ==========================================
         // 4. LOGIC LƯU TRỮ ĐÁM MÂY (FIRESTORE)
@@ -700,173 +715,90 @@
                     const heading = tempDiv.querySelector('h1, h2, h3, p');
                     if (heading && heading.textContent.trim()) title = heading.textContent.trim().substring(0, 60) + "...";
                 }
-                const articleData = {
-                    id: currentArticleId, title: title, rawText: document.getElementById('mainInput').value, globalFormattedText: globalFormattedText,
-                    formattedHtml: document.getElementById('contentArea').innerHTML, summaryHtml: document.getElementById('summaryArea').innerHTML,
-                    chatMessages: chatMessages, chatHtml: document.getElementById('chatHistory').innerHTML, lastModified: Date.now()
-                };
+                const articleData = { id: currentArticleId, title: title, rawText: document.getElementById('mainInput').value, globalFormattedText: globalFormattedText, formattedHtml: document.getElementById('contentArea').innerHTML, summaryHtml: document.getElementById('summaryArea').innerHTML, chatMessages: chatMessages, chatHtml: document.getElementById('chatHistory').innerHTML, lastModified: Date.now() };
                 await setDoc(doc(db, getCollectionPath(), currentArticleId), articleData);
             } catch (error) { console.error("Lỗi đồng bộ Cloud:", error); }
         };
 
         window.openHistoryModal = async function() {
             if (!currentUser) return alert("Vui lòng đăng nhập!");
-            const historyList = document.getElementById('historyList');
-            historyList.innerHTML = '<div class="text-center p-4"><div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div></div>';
-            document.getElementById('historyModal').classList.remove('hidden');
-
+            const historyList = document.getElementById('historyList'); historyList.innerHTML = '<div class="text-center p-4"><div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div></div>'; document.getElementById('historyModal').classList.remove('hidden');
             try {
-                const snapshot = await getDocs(query(collection(db, getCollectionPath())));
-                const articles = []; snapshot.forEach(docSnap => articles.push(docSnap.data()));
+                const snapshot = await getDocs(query(collection(db, getCollectionPath()))); const articles = []; snapshot.forEach(docSnap => articles.push(docSnap.data()));
                 if (articles.length === 0) { historyList.innerHTML = '<div class="text-center text-slate-400 p-6 italic">Thư viện trống.</div>'; return; }
-
-                articles.sort((a, b) => b.lastModified - a.lastModified);
-                let html = '';
-                articles.forEach(art => {
-                    const date = new Date(art.lastModified).toLocaleString('vi-VN', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit', year:'numeric' });
-                    html += `
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors flex justify-between items-center group cursor-pointer" onclick="loadArticleObj(${JSON.stringify(art).replace(/"/g, '&quot;')})">
-                            <div class="flex-1 pr-4"><h4 class="font-bold text-slate-800 text-[15px] mb-1 group-hover:text-blue-700">${art.title}</h4><p class="text-xs text-slate-400">Đồng bộ lúc: ${date}</p></div>
-                            <button onclick="deleteArticleCloud('${art.id}', event)" class="text-slate-300 hover:text-red-500 p-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                        </div>`;
-                });
+                articles.sort((a, b) => b.lastModified - a.lastModified); let html = '';
+                articles.forEach(art => { const date = new Date(art.lastModified).toLocaleString('vi-VN', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit', year:'numeric' }); html += `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors flex justify-between items-center group cursor-pointer" onclick="loadArticleObj(${JSON.stringify(art).replace(/"/g, '&quot;')})"><div class="flex-1 pr-4"><h4 class="font-bold text-slate-800 text-[15px] mb-1 group-hover:text-blue-700">${art.title}</h4><p class="text-xs text-slate-400">Đồng bộ lúc: ${date}</p></div><button onclick="deleteArticleCloud('${art.id}', event)" class="text-slate-300 hover:text-red-500 p-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div>`; });
                 historyList.innerHTML = html;
             } catch (e) { historyList.innerHTML = '<div class="text-center text-red-500 p-4">Lỗi tải dữ liệu.</div>'; }
         };
 
         window.closeHistoryModal = function() { document.getElementById('historyModal').classList.add('hidden'); };
-
         window.loadArticleObj = function(article) {
-            currentArticleId = article.id; mainInput.value = article.rawText || ''; globalFormattedText = article.globalFormattedText || '';
-            contentArea.innerHTML = article.formattedHtml; summaryArea.innerHTML = article.summaryHtml; summaryArea.classList.remove('hidden');
-            chatMessages = article.chatMessages || []; document.getElementById('chatHistory').innerHTML = article.chatHtml || '';
-            showScreen('reading'); newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden');
-            document.getElementById('autoScrollBtn').classList.remove('hidden');
-            closeHistoryModal();
+            currentArticleId = article.id; mainInput.value = article.rawText || ''; globalFormattedText = article.globalFormattedText || ''; contentArea.innerHTML = article.formattedHtml; summaryArea.innerHTML = article.summaryHtml; summaryArea.classList.remove('hidden'); chatMessages = article.chatMessages || []; document.getElementById('chatHistory').innerHTML = article.chatHtml || ''; showScreen('reading'); newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden'); document.getElementById('autoScrollBtn').classList.remove('hidden'); closeHistoryModal();
         };
-
         window.deleteArticleCloud = async function(id, event) {
             event.stopPropagation();
-            if (currentUser && confirm("Xóa vĩnh viễn khỏi Đám mây?")) {
-                await deleteDoc(doc(db, getCollectionPath(), id));
-                if (currentArticleId === id) newReadBtn.click(); openHistoryModal();
-            }
+            if (currentUser && confirm("Xóa vĩnh viễn khỏi Đám mây?")) { await deleteDoc(doc(db, getCollectionPath(), id)); if (currentArticleId === id) newReadBtn.click(); openHistoryModal(); }
         };
 
         // ==========================================
-        // 5. CÁC TÁC VỤ AI CƠ BẢN CỦA DEEPREAD
+        // 5. CÁC TÁC VỤ AI CƠ BẢN
         // ==========================================
         let globalFormattedText = ""; let currentSelectedText = ""; let currentSelectionRange = null;
         const contentArea = document.getElementById('contentArea'); const summaryArea = document.getElementById('summaryArea');
         const floatingMenu = document.getElementById('floatingMenu'); const newReadBtn = document.getElementById('newReadBtn');
+        const tabBtn1 = document.getElementById('tabBtn1'); const tabBtn2 = document.getElementById('tabBtn2'); const tabContent1 = document.getElementById('tabContent1'); const tabContent2 = document.getElementById('tabContent2');
 
-        const tabBtn1 = document.getElementById('tabBtn1');
-        const tabBtn2 = document.getElementById('tabBtn2');
-        const tabContent1 = document.getElementById('tabContent1');
-        const tabContent2 = document.getElementById('tabContent2');
-
-        tabBtn1.addEventListener('click', () => {
-            tabBtn1.className = "flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-700 transition-all";
-            tabBtn2.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all";
-            tabContent1.classList.remove('hidden');
-            tabContent2.classList.add('hidden');
-        });
-
-        tabBtn2.addEventListener('click', () => {
-            tabBtn2.className = "flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-700 transition-all";
-            tabBtn1.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all";
-            tabContent2.classList.remove('hidden');
-            tabContent2.classList.add('flex');
-            tabContent1.classList.add('hidden');
-        });
+        tabBtn1.addEventListener('click', () => { tabBtn1.className = "flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-700 transition-all"; tabBtn2.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all"; tabContent1.classList.remove('hidden'); tabContent2.classList.add('hidden'); });
+        tabBtn2.addEventListener('click', () => { tabBtn2.className = "flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-700 transition-all"; tabBtn1.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all"; tabContent2.classList.remove('hidden'); tabContent2.classList.add('flex'); tabContent1.classList.add('hidden'); });
 
         document.getElementById('startResearchBtn').addEventListener('click', async () => {
             if(walletData.keys.length === 0) return alert("Kho khóa trống. Vui lòng thêm Khóa AI ở mục Cài đặt ⚙️");
-            const topic = document.getElementById('researchTopic').value.trim();
-            if (!topic) return alert("Vui lòng nhập chủ đề bạn muốn nghiên cứu!");
+            const topic = document.getElementById('researchTopic').value.trim(); if (!topic) return alert("Vui lòng nhập chủ đề bạn muốn nghiên cứu!");
 
-            // Cập nhật Prompt Nghiên cứu cơ bản - Đã ẩn URL thô vào siêu liên kết
             const prompt = `Đóng vai trò là một Chuyên gia phân tích độc lập / Nhà nghiên cứu. Hãy tìm kiếm thông tin mới nhất trên Google về: "${topic}". 
-Viết một báo cáo nghiên cứu cơ bản, khách quan và chuyên sâu. Độ dài tự động điều chỉnh linh hoạt dựa trên lượng thông tin thu thập được. Văn phong học thuật, mạch lạc.
+Viết một báo cáo nghiên cứu cơ bản, khách quan và chuyên sâu. Cấu trúc báo cáo bắt buộc bao gồm:
+1. **Tóm tắt điều hành (Executive Summary):**
+2. **Bối cảnh & Đặt vấn đề (Background/Context):**
+3. **Phân tích cốt lõi (Core Analysis):**
+4. **Góc nhìn đa chiều (Multidimensional Evaluation):**
+5. **Kết luận & Dự báo (Conclusion & Outlook):**
+6. **Nguồn tham khảo (References):** BẮT BUỘC liệt kê bằng cú pháp siêu liên kết Markdown: [Tên Nguồn](URL). TUYỆT ĐỐI KHÔNG để lộ đường link URL thô.`;
 
-Cấu trúc báo cáo bắt buộc bao gồm các phần sau, sử dụng định dạng thẻ Markdown (H1, H2, H3, Bullet points) cho rõ ràng:
-1. **Tóm tắt điều hành (Executive Summary):** 1-2 đoạn ngắn tóm tắt nhanh gọn nhất toàn bộ vấn đề.
-2. **Bối cảnh & Đặt vấn đề (Background/Context):** Tại sao chủ đề này lại quan trọng ở thời điểm hiện tại? Lịch sử hoặc nguyên nhân hình thành vấn đề là gì?
-3. **Phân tích cốt lõi (Core Analysis):** Đi sâu vào các số liệu, xu hướng hiện tại, và các sự kiện chính.
-4. **Góc nhìn đa chiều (Multidimensional Evaluation):** Đánh giá khách quan các mặt: Cơ hội - Thách thức, hoặc Ưu điểm - Nhược điểm.
-5. **Kết luận & Dự báo (Conclusion & Outlook):** Chốt lại vấn đề và đưa ra dự báo xu hướng trong tương lai gần.
-6. **Nguồn tham khảo (References):** BẮT BUỘC liệt kê danh sách Nguồn tham khảo bằng cú pháp siêu liên kết Markdown: [Tên Nguồn/Tiêu đề bài viết](URL). TUYỆT ĐỐI KHÔNG để lộ đường link URL thô ra ngoài văn bản nhằm giữ giao diện gọn gàng và đẹp mắt.`;
-
-            currentArticleId = Date.now().toString(); 
-            
-            document.getElementById('loadingTitle').textContent = "AI Đang Quét Google & Viết Bài...";
-            document.getElementById('loadingDesc').textContent = "Quá trình này có thể mất 10-20 giây để AI đọc và đối chiếu hàng loạt bài báo trên mạng...";
-            showScreen('loading');
-            
-            newReadBtn.classList.remove('hidden'); 
-            document.getElementById('openChatBtn').classList.remove('hidden');
-            document.getElementById('autoScrollBtn').classList.remove('hidden');
-
+            currentArticleId = Date.now().toString(); document.getElementById('loadingTitle').textContent = "AI Đang Quét Google & Viết Bài..."; showScreen('loading'); newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden'); document.getElementById('autoScrollBtn').classList.remove('hidden');
             try {
-                const payload = {
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                    tools: [{ googleSearch: {} }] 
-                };
-                
+                const payload = { contents: [{ role: 'user', parts: [{ text: prompt }] }], tools: [{ googleSearch: {} }] };
                 const result = await executeAITask('text', payload);
                 let textResult = result.response.text().replace(/^```(markdown|html|txt)?\n/i, '').replace(/\n```$/i, '').trim();
-                
-                document.getElementById('mainInput').value = textResult; 
-                globalFormattedText = textResult; 
-                contentArea.innerHTML = marked.parse(globalFormattedText);
-                
-                showScreen('reading'); 
-                resetChatHistory(); 
-                autoSave(); 
-                generateOverallSummary(globalFormattedText);
-
-                setTimeout(() => {
-                    document.getElementById('loadingTitle').textContent = "AI Đang Xử Lý & Dàn Trang...";
-                    document.getElementById('loadingDesc').textContent = "Giữ nguyên 100% nội dung gốc, tối ưu font chữ và đồng bộ lên đám mây.";
-                }, 1000);
-
-            } catch (error) { 
-                alert("Lỗi nghiên cứu (Đã thử mọi khóa): " + error.message); 
-                showScreen('input'); 
-            }
+                document.getElementById('mainInput').value = textResult; globalFormattedText = textResult; contentArea.innerHTML = marked.parse(globalFormattedText);
+                showScreen('reading'); resetChatHistory(); autoSave(); generateOverallSummary(globalFormattedText);
+            } catch (error) { alert("Lỗi nghiên cứu: " + error.message); showScreen('input'); }
         });
 
         document.getElementById('startBtn').addEventListener('click', async () => {
             if(walletData.keys.length === 0) return alert("Kho khóa trống. Vui lòng thêm Khóa AI ở mục Cài đặt ⚙️");
             const rawText = mainInput.value.trim(); if (!rawText) return;
-
-            currentArticleId = Date.now().toString(); showScreen('loading');
-            newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden');
-            document.getElementById('autoScrollBtn').classList.remove('hidden');
-
+            currentArticleId = Date.now().toString(); showScreen('loading'); newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden'); document.getElementById('autoScrollBtn').classList.remove('hidden');
             try {
                 const formatPrompt = `Bạn là biên tập viên. Dọn dẹp, thêm Heading, Bold, List bằng Markdown cho văn bản sau. TUYỆT ĐỐI GIỮ NGUYÊN 100% NỘI DUNG. Không bọc trong code block.\n\n"""\n${rawText}\n"""`;
                 const formatResult = await executeAITask('text', formatPrompt);
                 let textResult = formatResult.response.text().replace(/^```(markdown|html|txt)?\n/i, '').replace(/\n```$/i, '').trim();
                 globalFormattedText = textResult; contentArea.innerHTML = marked.parse(globalFormattedText);
                 showScreen('reading'); resetChatHistory(); autoSave(); generateOverallSummary(globalFormattedText);
-            } catch (error) { alert("Lỗi phân tích (Đã thử mọi khóa): " + error.message); showScreen('input'); }
+            } catch (error) { alert("Lỗi phân tích: " + error.message); showScreen('input'); }
         });
 
         newReadBtn.addEventListener('click', () => {
             if (window.isAutoScrolling) window.toggleAutoScroll();
             currentArticleId = null; mainInput.value = ''; document.getElementById('researchTopic').value = ''; contentArea.innerHTML = ''; summaryArea.innerHTML = ''; summaryArea.classList.add('hidden');
-            globalFormattedText = ''; floatingMenu.classList.remove('active'); showScreen('input');
-            newReadBtn.classList.add('hidden'); document.getElementById('openChatBtn').classList.add('hidden'); document.getElementById('chatDrawer').classList.add('translate-x-full');
-            document.getElementById('autoScrollBtn').classList.add('hidden');
-            clearQuote(); resetChatHistory();
+            globalFormattedText = ''; floatingMenu.classList.remove('active'); showScreen('input'); newReadBtn.classList.add('hidden'); document.getElementById('openChatBtn').classList.add('hidden'); document.getElementById('chatDrawer').classList.add('translate-x-full'); document.getElementById('autoScrollBtn').classList.add('hidden'); clearQuote(); resetChatHistory();
         });
 
         async function generateOverallSummary(text) {
             try {
                 const summaryPrompt = `Đọc văn bản sau và viết một TÓM TẮT NGẮN GỌN (3-4 gạch đầu dòng) về các ý chính nhất.\n"""${text}"""`;
                 const result = await executeAITask('text', summaryPrompt);
-                summaryArea.innerHTML = `<div class="bg-blue-50/50 p-6 rounded-2xl border border-blue-100/50"><h3 class="text-sm font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>Tóm tắt siêu tốc</h3><div class="prose prose-sm max-w-none text-slate-700">${marked.parse(result.response.text())}</div></div>`;
+                summaryArea.innerHTML = `<div class="bg-blue-50/50 p-6 rounded-2xl border border-blue-100/50"><h3 class="text-sm font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2">Tóm tắt siêu tốc</h3><div class="prose prose-sm max-w-none text-slate-700">${marked.parse(result.response.text())}</div></div>`;
                 summaryArea.classList.remove('hidden'); autoSave();
             } catch (error) { console.error("Lỗi tóm tắt:", error); }
         }
@@ -883,7 +815,7 @@ Cấu trúc báo cáo bắt buộc bao gồm các phần sau, sử dụng địn
         window.clearQuote = function() { document.getElementById('quotePreview').classList.add('hidden'); document.getElementById('quoteText').textContent = ''; };
 
         function resetChatHistory() {
-            chatMessages = []; document.getElementById('chatHistory').innerHTML = `<div class="flex flex-col gap-1 items-start mb-6 w-full"><div class="flex items-center gap-1.5 ml-1 mb-1"><span class="text-lg">✨</span><span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Đồng học AI</span></div><div class="w-full bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 text-slate-800 text-[15px] leading-relaxed">Chào bạn! Mình đã ghi nhớ toàn bộ tài liệu này. Bạn muốn thảo luận gì không?</div></div>`;
+            chatMessages = []; document.getElementById('chatHistory').innerHTML = `<div class="flex flex-col gap-1 items-start mb-6 w-full"><div class="flex items-center gap-1.5 ml-1 mb-1"><span class="text-lg">✨</span><span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Đồng học AI</span></div><div class="w-full bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 text-slate-800 text-[15px] leading-relaxed">Chào bạn! Mình đã ghi nhớ toàn bộ tài liệu này. Bạn muốn thảo luận gì không? (Bật icon Robot bên dưới để ra lệnh thao tác web nhé)</div></div>`;
         }
         function scrollToBottom() { const h = document.getElementById('chatHistory'); h.scrollTop = h.scrollHeight; }
 
@@ -905,6 +837,35 @@ Cấu trúc báo cáo bắt buộc bao gồm các phần sau, sử dụng địn
                 displayUI = `<div class="bg-blue-700/50 p-2 rounded mb-2 text-xs italic border-l-2 border-blue-300 line-clamp-3">${quote}</div>${rawInput}`; clearQuote();
             }
 
+            // Xử lý nhánh nếu đang ở chế độ Trợ lý Thao tác Web (Agent Mode)
+            if (isAgentMode) {
+                appendMessage('user', `<span class="text-purple-300 font-bold text-xs uppercase tracking-wider">🤖 Lệnh thao tác:</span><br>${displayUI}`);
+                chatInput.value = ''; chatInput.disabled = true; document.getElementById('sendChatBtn').disabled = true;
+                
+                document.getElementById('agentStatusText').textContent = "Đang phân tích lệnh...";
+                document.getElementById('agentStatusBanner').classList.remove('hidden');
+
+                try {
+                    if (!pageAgentInstance) initCoreAgent();
+                    
+                    // Thực thi lõi Agent
+                    await pageAgentInstance.execute(finalPrompt);
+                    
+                    // Lọc kết quả trả về từ Lịch sử hành động của Agent
+                    const history = pageAgentInstance.history;
+                    const lastStep = history.slice().reverse().find(h => h.type === 'step' || h.type === 'observation');
+                    const output = lastStep && lastStep.content ? lastStep.content : "Đã hoàn tất thao tác trên trang web.";
+                    
+                    appendMessage('model', `<span class="text-purple-600 font-bold text-xs uppercase tracking-wider">🤖 Báo cáo kết quả:</span><br>\n${output}`);
+                } catch (e) {
+                    appendMessage('model', `*Lỗi Agent Core:* ${e.message}`);
+                } finally {
+                    chatInput.disabled = false; document.getElementById('sendChatBtn').disabled = false; chatInput.focus(); scrollToBottom();
+                }
+                return;
+            }
+
+            // --- Xử lý nhánh Chat thông thường (Chat Mode) ---
             appendMessage('user', displayUI); chatInput.value = ''; chatInput.disabled = true; document.getElementById('sendChatBtn').disabled = true;
             const loadingId = 'loading-' + Date.now(); const loadingIndicator = document.createElement('div'); loadingIndicator.id = loadingId;
             loadingIndicator.innerHTML = `<div class="flex flex-col gap-1 items-start mb-6 w-full"><div class="flex items-center gap-1.5 ml-1 mb-1"><span class="text-lg">✨</span><span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Đồng học AI</span></div><div class="w-full bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-2 h-12"><div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div><div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.15s"></div><div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.3s"></div></div></div>`;
@@ -920,9 +881,7 @@ Cấu trúc báo cáo bắt buộc bao gồm các phần sau, sử dụng địn
                 document.getElementById(loadingId).remove(); appendMessage('model', aiResponse); autoSave();
             } catch (error) {
                 document.getElementById(loadingId).remove(); appendMessage('model', `*Lỗi hệ thống:* ${error.message}`); chatMessages.pop(); 
-            } finally {
-                chatInput.disabled = false; document.getElementById('sendChatBtn').disabled = false; chatInput.focus(); scrollToBottom();
-            }
+            } finally { chatInput.disabled = false; document.getElementById('sendChatBtn').disabled = false; chatInput.focus(); scrollToBottom(); }
         }
         document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
 
@@ -961,68 +920,36 @@ Cấu trúc báo cáo bắt buộc bao gồm các phần sau, sử dụng địn
 
             const resultBoxId = 'res-' + Date.now(); const resultBox = document.createElement('div'); resultBox.id = resultBoxId; 
             resultBox.className = `inline-result-box my-6 border rounded-2xl shadow-sm relative transition-all ${isNested ? 'nested-result' : ''} ${theme.boxClass}`;
-            
             resultBox.innerHTML = `<div class="border-b border-white/40 px-4 py-3 flex justify-between items-center cursor-pointer rounded-t-2xl box-header hover:bg-white/20 transition-colors" onclick="toggleBox('${resultBoxId}')"><span class="text-xs font-bold uppercase tracking-widest flex items-center gap-2 box-title ${theme.titleClass}"><svg class="w-4 h-4 animate-spin opacity-70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>AI Đang phân tích...</span><div class="flex items-center gap-1 md:gap-3"><span class="${theme.titleClass} font-semibold text-xs toggle-btn-text hidden md:inline">Thu gọn</span><button onclick="toggleFullScreen('${resultBoxId}', event)" class="text-slate-500 hover:text-slate-800 transition-colors p-1.5 rounded hover:bg-white/50" title="Toàn màn hình / Thu nhỏ"><svg id="fs-icon-${resultBoxId}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg></button><button onclick="document.getElementById('${resultBoxId}').remove(); window.autoSave(); event.stopPropagation();" class="text-slate-500 hover:text-red-500 transition-colors p-1.5 rounded hover:bg-white/50" title="Xóa kết quả này"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button></div></div><div class="p-4 md:p-5 box-content" id="content-${resultBoxId}"><div class="h-4 bg-white/60 rounded w-3/4 mb-3 animate-pulse"></div><div class="h-4 bg-white/60 rounded w-full mb-3 animate-pulse"></div><div class="h-4 bg-white/60 rounded w-5/6 animate-pulse"></div></div>`;
             if (bParent && bParent.parentNode) bParent.parentNode.insertBefore(resultBox, bParent.nextSibling); else contentArea.appendChild(resultBox); 
             window.getSelection().removeAllRanges(); setTimeout(() => resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
 
             const finalPrompt = `[BỐI CẢNH TOÀN BÀI]\n"""${globalFormattedText}"""\n\n[ĐOẠN VĂN]\n"""${currentSelectedText}"""\n\n[NHIỆM VỤ]\n${theme.prompt}\nViết bằng tiếng Việt, định dạng Markdown rõ ràng.`;
-
             try {
                 const result = await executeAITask('text', finalPrompt);
-                
                 document.getElementById(`content-${resultBoxId}`).innerHTML = `<div class="prose prose-blue max-w-none prose-sm md:prose-base">${marked.parse(result.response.text())}</div>`;
-                const titleSpan = resultBox.querySelector('.box-title'); 
-                titleSpan.innerHTML = theme.icon + ' ' + theme.title; 
-                
+                const titleSpan = resultBox.querySelector('.box-title'); titleSpan.innerHTML = theme.icon + ' ' + theme.title; 
                 const footerDiv = document.createElement('div'); footerDiv.className = "border-t border-white/40 px-4 py-3 flex justify-center items-center rounded-b-2xl box-footer";
                 footerDiv.innerHTML = `<button onclick="toggleBox('${resultBoxId}')" class="${theme.btnClass} border shadow-sm transition-colors text-sm font-medium flex items-center gap-1.5 px-4 py-1.5 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>Thu gọn kết quả</button>`;
                 resultBox.appendChild(footerDiv); autoSave();
             } catch (error) { document.getElementById(`content-${resultBoxId}`).innerHTML = `<p class="text-red-600 font-semibold">Lỗi phân tích: ${error.message}</p>`; }
         };
 
-        // ==========================================
-        // 6. TÍNH NĂNG ĐỌC TỰ ĐỘNG (AUTO-SCROLL)
-        // ==========================================
-        window.isAutoScrolling = false;
-        window.scrollAnimationId = null;
-        window.scrollSpeed = 0.8; 
-
-        window.autoScrollStep = function() {
-            window.scrollBy(0, window.scrollSpeed);
-            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2) {
-                window.toggleAutoScroll();
-                return;
-            }
-            window.scrollAnimationId = requestAnimationFrame(window.autoScrollStep);
-        };
-
+        window.isAutoScrolling = false; window.scrollAnimationId = null; window.scrollSpeed = 0.8; 
+        window.autoScrollStep = function() { window.scrollBy(0, window.scrollSpeed); if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2) { window.toggleAutoScroll(); return; } window.scrollAnimationId = requestAnimationFrame(window.autoScrollStep); };
         window.toggleAutoScroll = function() {
-            const btnIcon = document.getElementById('autoScrollIcon');
-            const btnText = document.getElementById('autoScrollText');
-            const autoScrollBtn = document.getElementById('autoScrollBtn');
-            
+            const btnIcon = document.getElementById('autoScrollIcon'); const btnText = document.getElementById('autoScrollText'); const autoScrollBtn = document.getElementById('autoScrollBtn');
             if (window.isAutoScrolling) {
-                cancelAnimationFrame(window.scrollAnimationId);
-                window.isAutoScrolling = false;
-                btnIcon.textContent = "⬇️";
-                btnText.textContent = "Đọc tự động";
-                autoScrollBtn.classList.replace('bg-rose-50', 'bg-emerald-50');
-                autoScrollBtn.classList.replace('text-rose-700', 'text-emerald-700');
-                autoScrollBtn.classList.replace('border-rose-200', 'border-emerald-200');
+                cancelAnimationFrame(window.scrollAnimationId); window.isAutoScrolling = false; btnIcon.textContent = "⬇️"; btnText.textContent = "Đọc tự động";
+                autoScrollBtn.classList.replace('bg-rose-50', 'bg-emerald-50'); autoScrollBtn.classList.replace('text-rose-700', 'text-emerald-700'); autoScrollBtn.classList.replace('border-rose-200', 'border-emerald-200');
             } else {
-                window.isAutoScrolling = true;
-                btnIcon.textContent = "⏸️";
-                btnText.textContent = "Dừng đọc";
-                autoScrollBtn.classList.replace('bg-emerald-50', 'bg-rose-50');
-                autoScrollBtn.classList.replace('text-emerald-700', 'text-rose-700');
-                autoScrollBtn.classList.replace('border-emerald-200', 'border-rose-200');
+                window.isAutoScrolling = true; btnIcon.textContent = "⏸️"; btnText.textContent = "Dừng đọc";
+                autoScrollBtn.classList.replace('bg-emerald-50', 'bg-rose-50'); autoScrollBtn.classList.replace('text-emerald-700', 'text-rose-700'); autoScrollBtn.classList.replace('border-emerald-200', 'border-rose-200');
                 window.scrollAnimationId = requestAnimationFrame(window.autoScrollStep);
             }
         };
 
         document.getElementById('autoScrollBtn').addEventListener('click', window.toggleAutoScroll);
-        
         window.addEventListener('wheel', () => { if (window.isAutoScrolling) window.toggleAutoScroll(); }, { passive: true });
         window.addEventListener('touchstart', () => { if (window.isAutoScrolling) window.toggleAutoScroll(); }, { passive: true });
 
