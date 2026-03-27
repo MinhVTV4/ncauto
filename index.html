@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DeepRead AI - Đọc hiểu Đa chiều</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Tích hợp thư viện PageAgent trực tiếp -->
+    <script src="https://cdn.jsdelivr.net/npm/page-agent@1.6.2/dist/iife/page-agent.demo.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .reading-prose { font-size: 1.125rem; line-height: 1.85; color: #334155; }
+        .reading-prose p { margin-bottom: 1.25rem; }
+        .reading-prose h1, .reading-prose h2, .reading-prose h3 { color: #0f172a; font-weight: 800; margin-top: 2rem; margin-bottom: 1rem; line-height: 1.3; }
+        .reading-prose h1 { font-size: 2rem; }
+        .reading-prose h2 { font-size: 1.5rem; }
+        .reading-prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+        .reading-prose strong { color: #0f172a; font-weight: 700; }
+        
+        #floatingMenu {
+            position: absolute;
+            z-index: 50;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            opacity: 0;
+        }
+        #floatingMenu.active { pointer-events: auto; opacity: 1; transform: translate(-50%, -100%) translateY(-5px); }
+        .menu-arrow::after {
+            content: ''; position: absolute; top: 100%; left: 50%;
+            margin-left: -6px; border-width: 6px; border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+        
+        #floatingMenu.mobile-pos { transform: translate(-50%, 0); margin-top: 0; }
+        #floatingMenu.mobile-pos.active { transform: translate(-50%, 0) translateY(5px); }
+        #floatingMenu.mobile-pos::after { top: auto; bottom: 100%; border-color: transparent transparent #1e293b transparent; }
+
+        .inline-result-box { transform-origin: top; animation: slideDown 0.3s ease-out forwards; }
+        @keyframes slideDown { from { opacity: 0; transform: scaleY(0.95); } to { opacity: 1; transform: scaleY(1); } }
+        
+        .is-collapsed .box-content, .is-collapsed .box-footer { display: none !important; }
+        .is-collapsed { margin-bottom: 0.5rem !important; }
+
+        .nested-result {
+            margin-left: 1rem; margin-top: 0.5rem;
+            border-left: 3px solid #94a3b8 !important; 
+            border-radius: 0 1rem 1rem 0 !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+        }
+        @media (min-width: 768px) { .nested-result { margin-left: 2rem; border-left-width: 4px !important; } }
+        
+        .stacking-disabled { animation: none !important; transform: none !important; }
+        .fullscreen-mode {
+            position: fixed !important; top: 0 !important; left: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            z-index: 9999 !important; margin: 0 !important; border-radius: 0 !important;
+            overflow-y: auto !important; max-height: none !important; border: none !important;
+            background-color: #fff !important; animation: none !important; transform: none !important;
+        }
+        body.has-fullscreen { overflow: hidden !important; }
+        #historyModal, #setupModal { backdrop-filter: blur(4px); }
+        
+        /* CSS cho Toggle Switch (Nút gạt) */
+        .toggle-checkbox:checked { right: 0; border-color: #2563EB; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #2563EB; }
+
+        /* Tinh chỉnh Z-index cho PageAgent panel nếu cần */
+        .page-agent-panel-container { z-index: 99999 !important; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen flex flex-col relative selection:bg-blue-200 selection:text-blue-900">
+
+    <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-6 py-3 flex justify-between items-center sticky top-0 z-40 shadow-sm relative">
+        <div>
+            <h1 class="text-xl md:text-2xl font-extrabold text-blue-700 tracking-tight flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
+                DeepRead AI
+            </h1>
+            <p class="text-[10px] md:text-xs text-slate-500 font-medium mt-0.5" id="statusText">Đang chờ cấu hình AI...</p>
+        </div>
+        <div class="flex items-center gap-1.5 md:gap-2">
+            <button id="loginBtn" class="p-2 md:px-3 md:py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2" title="Đăng nhập để Lưu trữ Đám mây">
+                <span>🔑</span><span class="hidden md:inline">Đăng nhập</span>
+            </button>
+            
+            <div id="userInfo" class="hidden flex items-center gap-2 bg-slate-100 p-1 pr-3 rounded-full cursor-pointer hover:bg-slate-200 transition" onclick="toggleLogoutMenu()">
+                <img id="userAvatar" src="" class="w-7 h-7 md:w-8 md:h-8 rounded-full border border-slate-200">
+                <span id="userName" class="text-xs font-semibold text-slate-700 hidden md:inline"></span>
+            </div>
+
+            <div id="logoutMenu" class="hidden absolute top-[60px] right-4 bg-white border border-slate-200 shadow-xl rounded-xl p-2 z-50 min-w-[150px]">
+                <div class="px-3 py-2 border-b border-slate-100 mb-1">
+                    <p class="text-xs text-slate-400">Đã đồng bộ Cloud</p>
+                </div>
+                <button id="logoutBtn" class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    Đăng xuất
+                </button>
+            </div>
+
+            <button onclick="openSetup()" class="p-2 md:px-3 md:py-2 bg-slate-50 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 relative" title="Quản lý Kho Khóa AI (Ví Key)">
+                <span>⚙️</span>
+                <span id="cloudKeyBadge" class="hidden absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+            </button>
+            <button id="btnHistory" onclick="openHistoryModal()" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+                <span>☁️</span><span class="hidden md:inline">Lịch sử</span>
+            </button>
+            
+            <!-- ✨ Nút kích hoạt Agent -->
+            <button id="toggleAgentBtn" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+                <span>🤖</span><span class="hidden md:inline">Trợ lý Web</span>
+            </button>
+
+            <button id="openChatBtn" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+                <span>💬</span><span class="hidden md:inline">Chat AI</span>
+            </button>
+            <button id="newReadBtn" class="hidden px-3 py-1.5 md:px-4 md:py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                <span class="hidden md:inline">Bài mới</span>
+            </button>
+        </div>
+    </header>
+
+    <main id="inputScreen" class="hidden flex-1 flex flex-col items-center justify-center p-4 md:p-6 w-full max-w-4xl mx-auto">
+        <div class="w-full bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-slate-100 relative">
+            <div id="cloudWarning" class="hidden absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-100 text-amber-800 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm border border-amber-200 flex items-center gap-1.5 whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                Chế độ Ẩn danh: Lịch sử & Ví Khóa không lưu Cloud.
+            </div>
+
+            <div class="flex space-x-2 mb-6 p-1.5 bg-slate-100 rounded-xl w-full max-w-md mx-auto mt-2">
+                <button id="tabBtn1" class="flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-700 transition-all">📄 Dán Tài Liệu</button>
+                <button id="tabBtn2" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">🌍 Nghiên cứu AI</button>
+            </div>
+
+            <div id="tabContent1" class="w-full">
+                <h2 class="text-lg md:text-xl font-bold mb-4 text-slate-800">Dán nội dung bài viết / tài liệu vào đây:</h2>
+                <textarea id="mainInput" class="w-full h-48 md:h-64 p-4 md:p-5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-slate-700 md:text-lg leading-relaxed shadow-inner placeholder-slate-400 font-sans" placeholder="Ví dụ: Copy một bài báo dài, một hợp đồng khó hiểu..."></textarea>
+                <div class="mt-6 flex justify-end">
+                    <button id="startBtn" class="w-full md:w-auto px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:bg-slate-400">
+                        Bắt đầu Phân tích
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="tabContent2" class="w-full hidden flex-col">
+                <h2 class="text-lg md:text-xl font-bold mb-4 text-slate-800">Chủ đề bạn muốn nghiên cứu:</h2>
+                <input type="text" id="researchTopic" class="w-full p-4 md:p-5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 md:text-lg shadow-inner placeholder-slate-400" placeholder="VD: Tác động của trí tuệ nhân tạo đến thị trường việc làm 2026...">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="researchMode" value="short" class="peer sr-only" checked>
+                        <div class="p-4 border border-slate-200 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:ring-1 peer-checked:ring-blue-500 transition-all">
+                            <h3 class="font-bold text-blue-800 text-sm mb-1">⚡ Tổng quan Ngắn gọn</h3>
+                            <p class="text-xs text-slate-500">~500 chữ. Đọc nhanh, tóm tắt tin tức cốt lõi mới nhất.</p>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="researchMode" value="deep" class="peer sr-only">
+                        <div class="p-4 border border-slate-200 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:ring-1 peer-checked:ring-blue-500 transition-all">
+                            <h3 class="font-bold text-blue-800 text-sm mb-1">🔬 Phân tích Chuyên sâu</h3>
+                            <p class="text-xs text-slate-500">~1500 chữ. Đa góc nhìn, bối cảnh, dự báo & trích dẫn nguồn.</p>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button id="startResearchBtn" class="w-full md:w-auto px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        🚀 Quét Google & Viết Bài
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <main id="loadingScreen" class="hidden flex-1 flex flex-col items-center justify-center p-6 w-full text-center">
+        <div class="w-16 h-16 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-6"></div>
+        <h2 id="loadingTitle" class="text-2xl font-bold text-slate-800 mb-2">AI Đang Xử Lý & Dàn Trang...</h2>
+        <p id="loadingDesc" class="text-slate-500 max-w-md">Giữ nguyên 100% nội dung gốc, tối ưu font chữ và đồng bộ lên đám mây.</p>
+    </main>
+
+    <main id="readingScreen" class="hidden flex-1 w-full bg-[#f8fafc] relative">
+        <div class="max-w-3xl mx-auto bg-white min-h-screen px-6 py-10 md:px-12 md:py-16 shadow-sm border-x border-slate-200">
+            <div id="summaryArea" class="mb-10 pb-8 border-b-2 border-slate-100 hidden"></div>
+            <div id="contentArea" class="reading-prose"></div>
+            <div class="text-center mt-20 pt-10 border-t border-slate-100 text-slate-400 text-sm italic flex items-center justify-center gap-2">
+                <span id="cloudStatusIcon">☁️</span> <span id="cloudStatusText">Tài liệu đã được đồng bộ lên Cloud.</span>
+            </div>
+        </div>
+    </main>
+
+    <div id="floatingMenu" class="bg-slate-800 text-white rounded-lg shadow-2xl flex p-1 menu-arrow ring-1 ring-white/10 overflow-x-auto max-w-[95vw] whitespace-nowrap">
+        <button onclick="runTool('explain')" class="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-700 rounded-md transition-colors text-sm font-medium border-r border-slate-600"><span class="text-blue-400">🔍</span> Giải thích</button>
+        <button onclick="runTool('eli5')" class="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-700 rounded-md transition-colors text-sm font-medium border-r border-slate-600"><span class="text-emerald-400">💡</span> Dễ hiểu</button>
+        <button onclick="runTool('critique')" class="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-700 rounded-md transition-colors text-sm font-medium border-r border-slate-600"><span class="text-rose-400">⚖️</span> Phản biện</button>
+        <button onclick="runTool('solution')" class="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-700 rounded-md transition-colors text-sm font-medium border-r border-slate-600"><span class="text-indigo-400">🛠️</span> Giải pháp</button>
+        <button onclick="runTool('expand')" class="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-700 rounded-md transition-colors text-sm font-medium border-r border-slate-600"><span class="text-amber-400">🌐</span> Mở rộng</button>
+        <button onclick="quoteToChat()" class="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-700 rounded-md transition-colors text-sm font-medium text-blue-300"><span>💬</span> Hỏi AI</button>
+    </div>
+
+    <div id="chatDrawer" class="fixed inset-y-0 right-0 w-full md:w-[400px] bg-white shadow-2xl border-l border-slate-200 z-50 transform translate-x-full transition-transform duration-300 flex flex-col pt-16 md:pt-0">
+        <div class="bg-blue-600 text-white p-4 flex justify-between items-center shrink-0 shadow-md z-10">
+            <h3 class="font-bold flex items-center gap-2"><span>💬</span> Đồng học AI</h3>
+            <button id="closeChatBtn" class="text-white hover:text-blue-200 p-1 bg-white/10 rounded-md transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+        <div id="chatHistory" class="flex-1 overflow-y-auto p-4 bg-slate-50 text-sm pb-20"></div>
+        <div class="p-3 md:p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] pb-8 md:pb-4">
+            <div id="quotePreview" class="hidden mb-2 p-2 bg-blue-50 border-l-4 border-blue-400 text-xs text-slate-600 rounded-r line-clamp-2 italic relative pr-6">
+                <button onclick="clearQuote()" class="absolute top-1 right-1 text-slate-400 hover:text-red-500 bg-white rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
+                <span id="quoteText" class="font-medium text-blue-800"></span>
+            </div>
+            <div class="flex gap-2 relative">
+                <input type="text" id="chatInput" class="flex-1 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all" placeholder="Nhắn tin cho AI...">
+                <button id="sendChatBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl transition-colors flex items-center justify-center aspect-square disabled:bg-slate-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Lịch Sử -->
+    <div id="historyModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><span>☁️</span> Thư viện Đám mây</h2>
+                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-700 p-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div id="historyList" class="p-4 overflow-y-auto flex-1 space-y-3 bg-slate-100/50"></div>
+        </div>
+    </div>
+
+    <!-- Modal Ví Khóa AI -->
+    <div id="setupModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <span>🗂️</span> Ví Khóa AI (Key Wallet)
+                </h2>
+                <button onclick="closeSetupModal()" id="closeSetupBtn" class="text-slate-400 hover:text-slate-700 p-2 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div class="overflow-y-auto flex-1 p-5 md:p-6 bg-slate-50/50">
+                <div id="modalLoginSection" class="mb-6 bg-blue-50 border border-blue-200 p-5 rounded-xl text-center shadow-sm">
+                    <h3 class="text-sm font-bold text-blue-800 mb-2 flex items-center justify-center gap-2">
+                        <span>☁️</span> Đã có Ví Khóa trên Đám mây?
+                    </h3>
+                    <p class="text-xs text-blue-600 mb-4">Đăng nhập để tự động tải cấu hình AI và Lịch sử của bạn.</p>
+                    <button id="modalLoginBtn" class="w-full py-2.5 bg-white border border-blue-200 text-blue-700 font-bold rounded-lg hover:bg-blue-100 shadow-sm transition-all flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        Đăng nhập bằng Google
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-4 mb-6" id="modalDivider">
+                    <div class="h-px bg-slate-200 flex-1"></div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Hoặc sử dụng Ẩn danh</span>
+                    <div class="h-px bg-slate-200 flex-1"></div>
+                </div>
+
+                <div id="walletLoggedOut" class="hidden mb-6 bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm">
+                    <strong>Chế độ Ẩn danh.</strong> Cấu hình dưới đây chỉ lưu tạm trên máy này. Đăng nhập để sử dụng tính năng <em>Kho lưu trữ nhiều Khóa và Tự động chuyển nguồn</em>.
+                </div>
+
+                <div id="walletControls" class="hidden mb-6 bg-white p-4 border border-blue-100 rounded-xl shadow-sm flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Tự động chuyển nguồn (Auto-Fallback)</h4>
+                        <p class="text-xs text-slate-500 mt-0.5">Tự động dùng khóa dự phòng tiếp theo nếu khóa hiện tại hết hạn mức.</p>
+                    </div>
+                    <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="autoFallbackToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10"/>
+                        <label for="autoFallbackToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer transition-colors duration-300"></label>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Danh sách Khóa của bạn</h3>
+                    <div id="keyList" class="space-y-3"></div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Thêm Cấu hình mới</h3>
+                    <input type="text" id="newKeyName" class="w-full mb-3 p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Tên gợi nhớ (VD: Khóa Dự Phòng 1)...">
+                    <textarea id="configInputBox" class="w-full h-32 p-3 bg-slate-800 text-green-400 font-mono text-xs md:text-sm rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none shadow-inner" placeholder="const firebaseConfig = { ... };"></textarea>
+                    
+                    <div id="configErrorMsg" class="hidden mt-3 text-red-500 text-sm font-medium bg-red-50 p-3 rounded-lg border border-red-100"></div>
+
+                    <button id="saveConfigBtn" class="mt-4 w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-sm transition-all flex items-center justify-center gap-2">
+                        + Thêm vào Kho & Sử dụng ngay
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, query } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+        import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-ai.js";
+
+        // ==========================================
+        // 1. KÉT SẮT CLOUD & XÁC THỰC
+        // ==========================================
+        const systemConfig = {
+            apiKey: "AIzaSyCBZwAol847lfKqq0C_LbU3yKApOb3WDIE",
+            authDomain: "nc-firestore.firebaseapp.com",
+            projectId: "nc-firestore",
+            storageBucket: "nc-firestore.firebasestorage.app",
+            messagingSenderId: "225575571621",
+            appId: "1:225575571621:web:94b8abd8178d2ee24abd4c"
+        };
+        const sysApp = initializeApp(systemConfig, "SystemDatabaseApp");
+        const auth = getAuth(sysApp);
+        const db = getFirestore(sysApp);
+        
+        let currentUser = null;
+        const APP_NAMESPACE = typeof __app_id !== 'undefined' ? __app_id : 'deepread-cloud';
+        
+        function getCollectionPath() { return `artifacts/${APP_NAMESPACE}/users/${currentUser.uid}/articles`; }
+        function getWalletPath() { return `artifacts/${APP_NAMESPACE}/users/${currentUser.uid}/settings`; }
+
+        const provider = new GoogleAuthProvider();
+        document.getElementById('loginBtn').addEventListener('click', () => signInWithPopup(auth, provider).catch(e => alert(e.message)));
+        document.getElementById('modalLoginBtn').addEventListener('click', () => signInWithPopup(auth, provider).catch(e => alert(e.message)));
+        
+        document.getElementById('logoutBtn').addEventListener('click', () => { signOut(auth); document.getElementById('logoutMenu').classList.add('hidden'); document.getElementById('newReadBtn').click(); });
+        window.toggleLogoutMenu = () => document.getElementById('logoutMenu').classList.toggle('hidden');
+
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            const loginBtn = document.getElementById('loginBtn');
+            const userInfo = document.getElementById('userInfo');
+            const btnHistory = document.getElementById('btnHistory');
+            const modalLoginSection = document.getElementById('modalLoginSection');
+            const modalDivider = document.getElementById('modalDivider');
+            
+            if (user) {
+                loginBtn.classList.add('hidden');
+                userInfo.classList.remove('hidden');
+                document.getElementById('userAvatar').src = user.photoURL || 'https://ui-avatars.com/api/?name=User';
+                document.getElementById('userName').textContent = user.displayName?.split(' ')[0] || 'Tài khoản';
+                btnHistory.classList.remove('hidden');
+                document.getElementById('cloudWarning').classList.add('hidden');
+                
+                document.getElementById('cloudStatusIcon').textContent = "☁️";
+                document.getElementById('cloudStatusText').textContent = "Tài liệu đang được đồng bộ hóa lên Cloud.";
+                document.getElementById('cloudKeyBadge').classList.remove('hidden'); 
+                
+                if(modalLoginSection) modalLoginSection.classList.add('hidden');
+                if(modalDivider) modalDivider.classList.add('hidden');
+
+                await loadKeyWalletCloud(); 
+
+                if (walletData.keys.length > 0) {
+                    document.getElementById('setupModal').classList.add('hidden');
+                    if (document.getElementById('readingScreen').classList.contains('hidden')) {
+                        showScreen('input');
+                    }
+                }
+            } else {
+                loginBtn.classList.remove('hidden');
+                userInfo.classList.add('hidden');
+                btnHistory.classList.add('hidden');
+                document.getElementById('logoutMenu').classList.add('hidden');
+                document.getElementById('cloudWarning').classList.remove('hidden');
+                
+                document.getElementById('cloudStatusIcon').textContent = "⚠️";
+                document.getElementById('cloudStatusText').textContent = "Chế độ Ẩn danh. Dữ liệu KHÔNG được lưu lên Cloud.";
+                document.getElementById('cloudKeyBadge').classList.add('hidden');
+                
+                if(modalLoginSection) modalLoginSection.classList.remove('hidden');
+                if(modalDivider) modalDivider.classList.remove('hidden');
+
+                loadKeyWalletLocal(); 
+            }
+        });
+
+        // ==========================================
+        // 2. VÍ KHÓA AI (KEY WALLET) & HOT-SWAP
+        // ==========================================
+        const LOCAL_CONFIG_KEY = 'deepread_local_wallet';
+        let walletData = { keys: [], autoFallback: false };
+        let model, chatModel, aiApp;
+
+        function parseConfigString(text) {
+            const config = {};
+            const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+            for (let key of keys) {
+                const regex = new RegExp(`${key}\\s*:\\s*["'\`]([^"'\`]+)["'\`]`);
+                const match = text.match(regex);
+                if (match) config[key] = match[1];
+            }
+            if (!config.apiKey || !config.projectId) throw new Error("Không tìm thấy apiKey hoặc projectId hợp lệ.");
+            return config;
+        }
+
+        async function initAI(configObj) {
+            try {
+                if (aiApp) await deleteApp(aiApp);
+                aiApp = initializeApp(configObj, 'AI-Engine-' + Date.now());
+                const ai = getAI(aiApp, { backend: new GoogleAIBackend() });
+                model = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
+                chatModel = getGenerativeModel(ai, { model: "gemini-3.1-flash-lite-preview" });
+                
+                document.getElementById('statusText').innerHTML = '<span class="text-green-600 text-lg">●</span> Động cơ AI Sẵn sàng';
+                
+                // ✨ KHỞI TẠO PAGE AGENT NGAY KHI AI SẴN SÀNG
+                setTimeout(initPageAgent, 1000);
+
+                return true;
+            } catch (e) {
+                document.getElementById('statusText').innerHTML = `<span class="text-red-600 text-lg">●</span> Lỗi kết nối AI`;
+                throw e;
+            }
+        }
+
+        async function loadKeyWalletCloud() {
+            try {
+                const docSnap = await getDoc(doc(db, getWalletPath(), 'wallet'));
+                if (docSnap.exists()) {
+                    walletData = docSnap.data();
+                } else {
+                    const local = localStorage.getItem(LOCAL_CONFIG_KEY);
+                    if (local) walletData = JSON.parse(local);
+                    await saveKeyWalletToCloud();
+                }
+                document.getElementById('autoFallbackToggle').checked = walletData.autoFallback;
+                activateRunningKey();
+            } catch (e) { console.error("Lỗi tải Ví từ Cloud", e); }
+        }
+
+        function loadKeyWalletLocal() {
+            const local = localStorage.getItem(LOCAL_CONFIG_KEY);
+            if (local) walletData = JSON.parse(local);
+            else walletData = { keys: [], autoFallback: false };
+            activateRunningKey();
+        }
+
+        async function saveKeyWallet() {
+            if (currentUser) await saveKeyWalletToCloud();
+            else localStorage.setItem(LOCAL_CONFIG_KEY, JSON.stringify(walletData));
+            renderWalletUI();
+        }
+
+        async function saveKeyWalletToCloud() {
+            try { await setDoc(doc(db, getWalletPath(), 'wallet'), walletData); }
+            catch (e) { console.error("Lỗi lưu Ví lên Cloud", e); }
+        }
+
+        function activateRunningKey() {
+            const activeKey = walletData.keys.find(k => k.isActive) || walletData.keys[0];
+            if (activeKey) {
+                try {
+                    const configObj = parseConfigString(activeKey.configStr);
+                    initAI(configObj);
+                } catch(e) { console.error("Khóa lỗi cú pháp", e); }
+            } else {
+                model = null; chatModel = null;
+                document.getElementById('statusText').innerHTML = '<span class="text-amber-500 text-lg">●</span> Chưa có Khóa AI';
+            }
+            renderWalletUI();
+        }
+
+        function renderWalletUI() {
+            const listDiv = document.getElementById('keyList');
+            if (walletData.keys.length === 0) {
+                listDiv.innerHTML = '<p class="text-sm text-slate-400 italic">Kho Khóa trống. Vui lòng thêm cấu hình mới bên dưới.</p>';
+                return;
+            }
+
+            let html = '';
+            walletData.keys.forEach((k, index) => {
+                const badge = k.isActive 
+                    ? `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">ĐANG DÙNG</span>` 
+                    : ``;
+                const btnAction = k.isActive
+                    ? ``
+                    : `<button onclick="switchKey('${k.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-medium transition">Sử dụng</button>`;
+                
+                html += `
+                    <div class="flex items-center justify-between p-3 bg-white border ${k.isActive ? 'border-green-300 ring-1 ring-green-100' : 'border-slate-200'} rounded-lg shadow-sm">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-semibold text-slate-800 text-sm">${k.name}</span>
+                                ${badge}
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-mono truncate w-32 md:w-48">${k.configStr.substring(0, 30)}...</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${btnAction}
+                            <button onclick="deleteKey('${k.id}')" class="text-slate-300 hover:text-red-500 p-1" title="Xóa khóa này"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        </div>
+                    </div>
+                `;
+            });
+            listDiv.innerHTML = html;
+        }
+
+        window.openSetup = function() {
+            if (currentUser) {
+                document.getElementById('walletLoggedOut').classList.add('hidden');
+                document.getElementById('walletControls').classList.remove('hidden');
+            } else {
+                document.getElementById('walletLoggedOut').classList.remove('hidden');
+                document.getElementById('walletControls').classList.add('hidden');
+            }
+            
+            document.getElementById('closeSetupBtn').classList.toggle('hidden', walletData.keys.length === 0);
+            renderWalletUI();
+            document.getElementById('setupModal').classList.remove('hidden');
+        };
+
+        window.closeSetupModal = function() {
+            if (walletData.keys.length > 0) document.getElementById('setupModal').classList.add('hidden');
+        };
+
+        document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+            const rawText = document.getElementById('configInputBox').value.trim();
+            const nameText = document.getElementById('newKeyName').value.trim() || `Khóa ${walletData.keys.length + 1}`;
+            const errorMsg = document.getElementById('configErrorMsg');
+            errorMsg.classList.add('hidden');
+
+            try {
+                parseConfigString(rawText);
+                walletData.keys.forEach(k => k.isActive = false);
+                walletData.keys.push({
+                    id: 'key-' + Date.now(),
+                    name: nameText,
+                    configStr: rawText,
+                    isActive: true
+                });
+
+                await saveKeyWallet();
+                activateRunningKey();
+                
+                document.getElementById('configInputBox').value = '';
+                document.getElementById('newKeyName').value = '';
+                
+                if (!document.getElementById('readingScreen').classList.contains('hidden') === false) {
+                    showScreen('input');
+                }
+                closeSetupModal();
+            } catch (e) {
+                errorMsg.innerText = "Lỗi cấu hình: " + e.message;
+                errorMsg.classList.remove('hidden');
+            }
+        });
+
+        window.switchKey = async function(id) {
+            walletData.keys.forEach(k => k.isActive = (k.id === id));
+            await saveKeyWallet();
+            activateRunningKey();
+        };
+
+        window.deleteKey = async function(id) {
+            if(!confirm("Bạn có chắc muốn xóa khóa này?")) return;
+            const keyToDelete = walletData.keys.find(k => k.id === id);
+            walletData.keys = walletData.keys.filter(k => k.id !== id);
+            
+            if (keyToDelete && keyToDelete.isActive && walletData.keys.length > 0) {
+                walletData.keys[0].isActive = true;
+            }
+            
+            await saveKeyWallet();
+            activateRunningKey();
+        };
+
+        document.getElementById('autoFallbackToggle').addEventListener('change', async (e) => {
+            walletData.autoFallback = e.target.checked;
+            await saveKeyWallet();
+        });
+
+        // ==========================================
+        // 3. CƠ CHẾ AUTO-FALLBACK 
+        // ==========================================
+        async function executeAITask(operationType, payload) {
+            let attempts = 0;
+            const maxAttempts = walletData.autoFallback ? walletData.keys.length : 1;
+
+            while (attempts < maxAttempts) {
+                try {
+                    if (!model || !chatModel) throw new Error("AI chưa được khởi tạo");
+                    if (operationType === 'text') return await model.generateContent(payload);
+                    if (operationType === 'chat') return await chatModel.generateContent(payload);
+                } catch (error) {
+                    attempts++;
+                    console.warn(`Lỗi AI (Lần thử ${attempts}):`, error.message);
+
+                    if (walletData.autoFallback && attempts < maxAttempts) {
+                        document.getElementById('statusText').innerHTML = `<span class="text-amber-500 text-xs">Đang kẹt, tự động đổi khóa...</span>`;
+                        let currentIndex = walletData.keys.findIndex(k => k.isActive);
+                        let nextIndex = (currentIndex + 1) % walletData.keys.length;
+                        
+                        walletData.keys.forEach((k, i) => k.isActive = (i === nextIndex));
+                        await saveKeyWallet();
+                        activateRunningKey();
+                        await new Promise(r => setTimeout(r, 1000));
+                        continue; 
+                    }
+                    throw error;
+                }
+            }
+        }
+
+        // ==========================================
+        // ✨ TÍCH HỢP PAGE AGENT (Bộ chặn và định tuyến AI)
+        // ==========================================
+        let pageAgentInstance = null;
+        const FAKE_AGENT_URL = 'https://deepread-fake-agent-api/v1/chat/completions';
+
+        // Đánh chặn lệnh gọi API từ PageAgent và đẩy thẳng vào core AI của DeepRead
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const url = args[0];
+            const options = args[1] || {};
+
+            if (typeof url === 'string' && url.includes('deepread-fake-agent-api')) {
+                try {
+                    const body = JSON.parse(options.body);
+                    let geminiContents = [];
+                    let sysPrompt = "";
+
+                    // Định tuyến từ định dạng OpenAI sang Gemini Format
+                    (body.messages || []).forEach(msg => {
+                        if (msg.role === 'system') {
+                            sysPrompt += msg.content + "\n";
+                        } else {
+                            geminiContents.push({
+                                role: msg.role === 'assistant' ? 'model' : 'user',
+                                parts: [{ text: msg.content }]
+                            });
+                        }
+                    });
+
+                    // Gắn System Prompt vào câu đầu tiên (vì Firebase Vertex AI cơ bản ít hỗ trợ param system_instruction)
+                    if (sysPrompt && geminiContents.length > 0 && geminiContents[0].role === 'user') {
+                        geminiContents[0].parts[0].text = `[SYSTEM INSTRUCTION CỦA AGENT]\n${sysPrompt}\n\n[LỆNH USER / DOM HIỆN TẠI]\n${geminiContents[0].parts[0].text}`;
+                    }
+
+                    // Kích hoạt Core AI (Tự động hưởng lợi từ Auto-Fallback và ví khóa Firebase)
+                    const result = await executeAITask('chat', { contents: geminiContents });
+                    const aiText = result.response.text();
+
+                    // Đóng gói trả về giống y hệt OpenAI để PageAgent không phát hiện ra
+                    const mockOpenAIResponse = {
+                        id: "chatcmpl-" + Date.now(),
+                        object: "chat.completion",
+                        created: Date.now(),
+                        model: "gemini-3.1-flash-lite-preview",
+                        choices: [{ index: 0, message: { role: "assistant", content: aiText }, finish_reason: "stop" }]
+                    };
+
+                    return new Response(JSON.stringify(mockOpenAIResponse), {
+                        status: 200, headers: { 'Content-Type': 'application/json' }
+                    });
+                } catch (error) {
+                    console.error("Lỗi PageAgent Interceptor:", error);
+                    return new Response(JSON.stringify({ error: { message: error.message } }), { status: 500 });
+                }
+            }
+            // Các fetch khác (Firebase, etc) thì pass qua bình thường
+            return originalFetch.apply(this, args);
+        };
+
+        // Hàm khởi tạo Agent
+        function initPageAgent() {
+            if (!window.PageAgent) {
+                console.warn("Thư viện PageAgent chưa sẵn sàng.");
+                return;
+            }
+            if (!pageAgentInstance) {
+                pageAgentInstance = new window.PageAgent({
+                    model: 'gemini-3.1-flash-lite-preview',
+                    baseURL: 'https://deepread-fake-agent-api/v1', // URL ảo sẽ bị chặn lại bởi interceptor
+                    apiKey: 'fake-bypassed-key',
+                    language: 'vi'
+                });
+            }
+            document.getElementById('toggleAgentBtn').classList.remove('hidden');
+        }
+
+        // Sự kiện Bật/Tắt UI của Agent
+        document.getElementById('toggleAgentBtn').addEventListener('click', () => {
+            if (pageAgentInstance) {
+                // PageAgent gen ra class css, ta dùng nó để toggle nếu hàm toggle ko rõ
+                const panel = document.querySelector('.page-agent-panel-container');
+                if (panel) {
+                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                }
+            }
+        });
+
+
+        // Khởi động
+        window.onload = function() {
+            showScreen('input'); 
+            loadKeyWalletLocal();
+            if (walletData.keys.length === 0) openSetup();
+        };
+
+        // ==========================================
+        // 4. LOGIC LƯU TRỮ ĐÁM MÂY (FIRESTORE)
+        // ==========================================
+        const screens = { input: document.getElementById('inputScreen'), loading: document.getElementById('loadingScreen'), reading: document.getElementById('readingScreen') };
+        function showScreen(screenName) { Object.values(screens).forEach(s => s.classList.add('hidden')); screens[screenName].classList.remove('hidden'); }
+
+        let currentArticleId = null;
+
+        window.autoSave = async function() {
+            if (!currentArticleId || !currentUser) return; 
+            try {
+                let title = "Bài viết không có tiêu đề";
+                if (globalFormattedText) {
+                    const tempDiv = document.createElement('div'); tempDiv.innerHTML = marked.parse(globalFormattedText);
+                    const heading = tempDiv.querySelector('h1, h2, h3, p');
+                    if (heading && heading.textContent.trim()) title = heading.textContent.trim().substring(0, 60) + "...";
+                }
+                const articleData = {
+                    id: currentArticleId, title: title, rawText: document.getElementById('mainInput').value, globalFormattedText: globalFormattedText,
+                    formattedHtml: document.getElementById('contentArea').innerHTML, summaryHtml: document.getElementById('summaryArea').innerHTML,
+                    chatMessages: chatMessages, chatHtml: document.getElementById('chatHistory').innerHTML, lastModified: Date.now()
+                };
+                await setDoc(doc(db, getCollectionPath(), currentArticleId), articleData);
+            } catch (error) { console.error("Lỗi đồng bộ Cloud:", error); }
+        };
+
+        window.openHistoryModal = async function() {
+            if (!currentUser) return alert("Vui lòng đăng nhập!");
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '<div class="text-center p-4"><div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div></div>';
+            document.getElementById('historyModal').classList.remove('hidden');
+
+            try {
+                const snapshot = await getDocs(query(collection(db, getCollectionPath())));
+                const articles = []; snapshot.forEach(docSnap => articles.push(docSnap.data()));
+                if (articles.length === 0) { historyList.innerHTML = '<div class="text-center text-slate-400 p-6 italic">Thư viện trống.</div>'; return; }
+
+                articles.sort((a, b) => b.lastModified - a.lastModified);
+                let html = '';
+                articles.forEach(art => {
+                    const date = new Date(art.lastModified).toLocaleString('vi-VN', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit', year:'numeric' });
+                    html += `
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors flex justify-between items-center group cursor-pointer" onclick="loadArticleObj(${JSON.stringify(art).replace(/"/g, '&quot;')})">
+                            <div class="flex-1 pr-4"><h4 class="font-bold text-slate-800 text-[15px] mb-1 group-hover:text-blue-700">${art.title}</h4><p class="text-xs text-slate-400">Đồng bộ lúc: ${date}</p></div>
+                            <button onclick="deleteArticleCloud('${art.id}', event)" class="text-slate-300 hover:text-red-500 p-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        </div>`;
+                });
+                historyList.innerHTML = html;
+            } catch (e) { historyList.innerHTML = '<div class="text-center text-red-500 p-4">Lỗi tải dữ liệu.</div>'; }
+        };
+
+        window.closeHistoryModal = function() { document.getElementById('historyModal').classList.add('hidden'); };
+
+        window.loadArticleObj = function(article) {
+            currentArticleId = article.id; mainInput.value = article.rawText || ''; globalFormattedText = article.globalFormattedText || '';
+            contentArea.innerHTML = article.formattedHtml; summaryArea.innerHTML = article.summaryHtml; summaryArea.classList.remove('hidden');
+            chatMessages = article.chatMessages || []; document.getElementById('chatHistory').innerHTML = article.chatHtml || '';
+            showScreen('reading'); newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden');
+            closeHistoryModal();
+        };
+
+        window.deleteArticleCloud = async function(id, event) {
+            event.stopPropagation();
+            if (currentUser && confirm("Xóa vĩnh viễn khỏi Đám mây?")) {
+                await deleteDoc(doc(db, getCollectionPath(), id));
+                if (currentArticleId === id) newReadBtn.click(); openHistoryModal();
+            }
+        };
+
+        // ==========================================
+        // 5. CÁC TÁC VỤ AI CƠ BẢN CỦA DEEPREAD
+        // ==========================================
+        let globalFormattedText = ""; let currentSelectedText = ""; let currentSelectionRange = null;
+        const contentArea = document.getElementById('contentArea'); const summaryArea = document.getElementById('summaryArea');
+        const floatingMenu = document.getElementById('floatingMenu'); const newReadBtn = document.getElementById('newReadBtn');
+
+        const tabBtn1 = document.getElementById('tabBtn1');
+        const tabBtn2 = document.getElementById('tabBtn2');
+        const tabContent1 = document.getElementById('tabContent1');
+        const tabContent2 = document.getElementById('tabContent2');
+
+        tabBtn1.addEventListener('click', () => {
+            tabBtn1.className = "flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-700 transition-all";
+            tabBtn2.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all";
+            tabContent1.classList.remove('hidden');
+            tabContent2.classList.add('hidden');
+        });
+
+        tabBtn2.addEventListener('click', () => {
+            tabBtn2.className = "flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-blue-700 transition-all";
+            tabBtn1.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all";
+            tabContent2.classList.remove('hidden');
+            tabContent2.classList.add('flex');
+            tabContent1.classList.add('hidden');
+        });
+
+        document.getElementById('startResearchBtn').addEventListener('click', async () => {
+            if(walletData.keys.length === 0) return alert("Kho khóa trống. Vui lòng thêm Khóa AI ở mục Cài đặt ⚙️");
+            const topic = document.getElementById('researchTopic').value.trim();
+            if (!topic) return alert("Vui lòng nhập chủ đề bạn muốn nghiên cứu!");
+
+            const mode = document.querySelector('input[name="researchMode"]:checked').value;
+            let prompt = "";
+            if (mode === 'short') {
+                prompt = `Hãy tìm kiếm thông tin mới nhất trên Google về: "${topic}". Đóng vai trò là một nhà báo, viết một bản tin tổng quan ngắn gọn (khoảng 500 chữ). Cấu trúc gồm: Mở đầu, Các điểm chính (gạch đầu dòng), và Kết luận. Yêu cầu định dạng Markdown đẹp mắt và chèn link nguồn bài viết tham khảo ở cuối bài.`;
+            } else {
+                prompt = `Hãy tìm kiếm thông tin mới nhất trên Google về: "${topic}". Đóng vai trò là một chuyên gia phân tích chiến lược, viết một bài nghiên cứu chuyên sâu (trên 1500 chữ). Phân tích đa chiều: Bối cảnh, Lợi ích/Rủi ro, Nguyên nhân sâu xa, và Dự báo tương lai. Yêu cầu văn phong học thuật, định dạng Markdown rõ ràng và CÓ DANH SÁCH NGUỒN TRÍCH DẪN (kèm link) minh bạch ở cuối bài.`;
+            }
+
+            currentArticleId = Date.now().toString(); 
+            
+            document.getElementById('loadingTitle').textContent = "AI Đang Quét Google & Viết Bài...";
+            document.getElementById('loadingDesc').textContent = "Quá trình này có thể mất 10-20 giây để AI đọc và đối chiếu hàng loạt bài báo trên mạng...";
+            showScreen('loading');
+            
+            newReadBtn.classList.remove('hidden'); 
+            document.getElementById('openChatBtn').classList.remove('hidden');
+
+            try {
+                const payload = {
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    tools: [{ googleSearch: {} }] 
+                };
+                
+                const result = await executeAITask('text', payload);
+                let textResult = result.response.text().replace(/^```(markdown|html|txt)?\n/i, '').replace(/\n```$/i, '').trim();
+                
+                document.getElementById('mainInput').value = textResult; 
+                globalFormattedText = textResult; 
+                contentArea.innerHTML = marked.parse(globalFormattedText);
+                
+                showScreen('reading'); 
+                resetChatHistory(); 
+                autoSave(); 
+                generateOverallSummary(globalFormattedText);
+
+                setTimeout(() => {
+                    document.getElementById('loadingTitle').textContent = "AI Đang Xử Lý & Dàn Trang...";
+                    document.getElementById('loadingDesc').textContent = "Giữ nguyên 100% nội dung gốc, tối ưu font chữ và đồng bộ lên đám mây.";
+                }, 1000);
+
+            } catch (error) { 
+                alert("Lỗi nghiên cứu (Đã thử mọi khóa): " + error.message); 
+                showScreen('input'); 
+            }
+        });
+
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            if(walletData.keys.length === 0) return alert("Kho khóa trống. Vui lòng thêm Khóa AI ở mục Cài đặt ⚙️");
+            const rawText = mainInput.value.trim(); if (!rawText) return;
+
+            currentArticleId = Date.now().toString(); showScreen('loading');
+            newReadBtn.classList.remove('hidden'); document.getElementById('openChatBtn').classList.remove('hidden');
+
+            try {
+                const formatPrompt = `Bạn là biên tập viên. Dọn dẹp, thêm Heading, Bold, List bằng Markdown cho văn bản sau. TUYỆT ĐỐI GIỮ NGUYÊN 100% NỘI DUNG. Không bọc trong code block.\n\n"""\n${rawText}\n"""`;
+                const formatResult = await executeAITask('text', formatPrompt);
+                let textResult = formatResult.response.text().replace(/^```(markdown|html|txt)?\n/i, '').replace(/\n```$/i, '').trim();
+                globalFormattedText = textResult; contentArea.innerHTML = marked.parse(globalFormattedText);
+                showScreen('reading'); resetChatHistory(); autoSave(); generateOverallSummary(globalFormattedText);
+            } catch (error) { alert("Lỗi phân tích (Đã thử mọi khóa): " + error.message); showScreen('input'); }
+        });
+
+        newReadBtn.addEventListener('click', () => {
+            currentArticleId = null; mainInput.value = ''; document.getElementById('researchTopic').value = ''; contentArea.innerHTML = ''; summaryArea.innerHTML = ''; summaryArea.classList.add('hidden');
+            globalFormattedText = ''; floatingMenu.classList.remove('active'); showScreen('input');
+            newReadBtn.classList.add('hidden'); document.getElementById('openChatBtn').classList.add('hidden'); document.getElementById('chatDrawer').classList.add('translate-x-full');
+            clearQuote(); resetChatHistory();
+        });
+
+        async function generateOverallSummary(text) {
+            try {
+                const summaryPrompt = `Đọc văn bản sau và viết một TÓM TẮT NGẮN GỌN (3-4 gạch đầu dòng) về các ý chính nhất.\n"""${text}"""`;
+                const result = await executeAITask('text', summaryPrompt);
+                summaryArea.innerHTML = `<div class="bg-blue-50/50 p-6 rounded-2xl border border-blue-100/50"><h3 class="text-sm font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>Tóm tắt siêu tốc</h3><div class="prose prose-sm max-w-none text-slate-700">${marked.parse(result.response.text())}</div></div>`;
+                summaryArea.classList.remove('hidden'); autoSave();
+            } catch (error) { console.error("Lỗi tóm tắt:", error); }
+        }
+
+        const chatDrawer = document.getElementById('chatDrawer'); const chatInput = document.getElementById('chatInput'); let chatMessages = []; 
+        document.getElementById('openChatBtn').addEventListener('click', () => { chatDrawer.classList.remove('translate-x-full'); chatInput.focus(); });
+        document.getElementById('closeChatBtn').addEventListener('click', () => chatDrawer.classList.add('translate-x-full'));
+
+        window.quoteToChat = function() {
+            if (!currentSelectedText) return; floatingMenu.classList.remove('active'); chatDrawer.classList.remove('translate-x-full');
+            document.getElementById('quoteText').textContent = `"...${currentSelectedText}..."`; document.getElementById('quotePreview').classList.remove('hidden');
+            window.getSelection().removeAllRanges(); setTimeout(() => chatInput.focus(), 300);
+        };
+        window.clearQuote = function() { document.getElementById('quotePreview').classList.add('hidden'); document.getElementById('quoteText').textContent = ''; };
+
+        function resetChatHistory() {
+            chatMessages = []; document.getElementById('chatHistory').innerHTML = `<div class="flex flex-col gap-1 items-start mb-6 w-full"><div class="flex items-center gap-1.5 ml-1 mb-1"><span class="text-lg">✨</span><span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Đồng học AI</span></div><div class="w-full bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 text-slate-800 text-[15px] leading-relaxed">Chào bạn! Mình đã ghi nhớ toàn bộ tài liệu này. Bạn muốn thảo luận gì không?</div></div>`;
+        }
+        function scrollToBottom() { const h = document.getElementById('chatHistory'); h.scrollTop = h.scrollHeight; }
+
+        function appendMessage(role, content) {
+            const msgDiv = document.createElement('div');
+            if (role === 'user') msgDiv.innerHTML = `<div class="flex flex-col gap-1 items-end mb-6"><span class="text-[10px] text-slate-400 font-bold mr-1 tracking-wider uppercase">Bạn</span><div class="bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-sm shadow-sm max-w-[85%] text-[15px] leading-relaxed">${content}</div></div>`;
+            else msgDiv.innerHTML = `<div class="flex flex-col gap-1 items-start mb-6 w-full"><div class="flex items-center gap-1.5 ml-1 mb-1"><span class="text-lg">✨</span><span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Đồng học AI</span></div><div class="w-full bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 text-slate-800 text-[15px] leading-relaxed prose prose-sm md:prose-base prose-blue max-w-none overflow-x-auto">${marked.parse(content)}</div></div>`;
+            document.getElementById('chatHistory').appendChild(msgDiv); scrollToBottom();
+        }
+
+        async function sendChatMessage() {
+            const rawInput = chatInput.value.trim(); const quoteTextEl = document.getElementById('quoteText');
+            const hasQuote = !document.getElementById('quotePreview').classList.contains('hidden') && quoteTextEl.textContent;
+            if (!rawInput && !hasQuote) return;
+
+            let finalPrompt = rawInput; let displayUI = rawInput;
+            if (hasQuote) {
+                const quote = quoteTextEl.textContent; finalPrompt = `Tham chiếu đến đoạn:\n${quote}\n\nYêu cầu:\n${rawInput || "Giải thích thêm."}`;
+                displayUI = `<div class="bg-blue-700/50 p-2 rounded mb-2 text-xs italic border-l-2 border-blue-300 line-clamp-3">${quote}</div>${rawInput}`; clearQuote();
+            }
+
+            appendMessage('user', displayUI); chatInput.value = ''; chatInput.disabled = true; document.getElementById('sendChatBtn').disabled = true;
+            const loadingId = 'loading-' + Date.now(); const loadingIndicator = document.createElement('div'); loadingIndicator.id = loadingId;
+            loadingIndicator.innerHTML = `<div class="flex flex-col gap-1 items-start mb-6 w-full"><div class="flex items-center gap-1.5 ml-1 mb-1"><span class="text-lg">✨</span><span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Đồng học AI</span></div><div class="w-full bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-2 h-12"><div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div><div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.15s"></div><div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.3s"></div></div></div>`;
+            document.getElementById('chatHistory').appendChild(loadingIndicator); scrollToBottom();
+
+            if (chatMessages.length === 0) chatMessages.push({ role: 'user', parts: [{ text: `Tài liệu:\n\n${globalFormattedText}\n\n---\n\nCâu hỏi:\n${finalPrompt}` }] });
+            else chatMessages.push({ role: 'user', parts: [{ text: finalPrompt }] });
+
+            try {
+                const result = await executeAITask('chat', { contents: chatMessages });
+                const aiResponse = result.response.text();
+                chatMessages.push({ role: 'model', parts: [{ text: aiResponse }] });
+                document.getElementById(loadingId).remove(); appendMessage('model', aiResponse); autoSave();
+            } catch (error) {
+                document.getElementById(loadingId).remove(); appendMessage('model', `*Lỗi hệ thống:* ${error.message}`); chatMessages.pop(); 
+            } finally {
+                chatInput.disabled = false; document.getElementById('sendChatBtn').disabled = false; chatInput.focus(); scrollToBottom();
+            }
+        }
+        document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+
+        function handleSelection() {
+            const selection = window.getSelection(); const text = selection.toString().trim();
+            if (text.length > 5) {
+                currentSelectedText = text; currentSelectionRange = selection.getRangeAt(0).cloneRange();
+                const rect = currentSelectionRange.getBoundingClientRect(); floatingMenu.style.left = `${rect.left + (rect.width / 2)}px`;
+                if (window.innerWidth < 768) { floatingMenu.style.top = `${rect.bottom + window.scrollY + 10}px`; floatingMenu.classList.add('mobile-pos'); } 
+                else { floatingMenu.style.top = `${rect.top + window.scrollY}px`; floatingMenu.classList.remove('mobile-pos'); }
+                floatingMenu.classList.add('active');
+            } else { if(!floatingMenu.contains(document.activeElement)) floatingMenu.classList.remove('active'); }
+        }
+        document.addEventListener('mouseup', () => setTimeout(handleSelection, 50)); document.addEventListener('touchend', () => setTimeout(handleSelection, 100));
+        window.addEventListener('scroll', () => floatingMenu.classList.remove('active'));
+
+        window.toggleBox = function(boxId) { const box = document.getElementById(boxId); if (!box) return; box.classList.toggle('is-collapsed'); const tBtn = box.querySelector('.toggle-btn-text'); if(tBtn) tBtn.textContent = box.classList.contains('is-collapsed') ? 'Mở rộng' : 'Thu gọn'; autoSave(); };
+        window.toggleFullScreen = function(boxId, event) { event.stopPropagation(); const box = document.getElementById(boxId); if (!box) return; const isFS = box.classList.toggle('fullscreen-mode'); document.body.classList.toggle('has-fullscreen', isFS); let parent = box.parentElement; while (parent && parent.closest) { let aBox = parent.closest('.inline-result-box'); if (aBox) { isFS ? aBox.classList.add('stacking-disabled') : aBox.classList.remove('stacking-disabled'); parent = aBox.parentElement; } else break; } const iconSvg = document.getElementById(`fs-icon-${boxId}`); iconSvg.innerHTML = isFS ? `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />` : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />`; if(!isFS) setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); };
+
+        window.runTool = async function(toolType) {
+            if (!currentSelectedText || !currentSelectionRange || !model) return;
+            floatingMenu.classList.remove('active');
+
+            let cNode = currentSelectionRange.endContainer; if (cNode.nodeType === 3) cNode = cNode.parentNode;
+            let bParent = cNode.closest('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote') || cNode.closest('div');
+            const isNested = bParent.closest('.inline-result-box') !== null; 
+            
+            const themes = {
+                'explain': { icon: "🔍", title: "Giải thích thuật ngữ", prompt: "Giải thích khái niệm khó, thuật ngữ trong đoạn văn. Giải thích theo bối cảnh.", boxClass: "bg-blue-50/50 border-blue-200 border-l-4 border-l-blue-500", titleClass: "text-blue-800", btnClass: "text-blue-700 bg-white hover:bg-blue-100 border-blue-200" },
+                'eli5': { icon: "💡", title: "Giải thích đơn giản", prompt: "Viết lại bằng ngôn ngữ đời thường. Đưa ra 1 ví dụ thực tế.", boxClass: "bg-emerald-50/50 border-emerald-200 border-l-4 border-l-emerald-500", titleClass: "text-emerald-800", btnClass: "text-emerald-700 bg-white hover:bg-emerald-100 border-emerald-200" },
+                'critique': { icon: "⚖️", title: "Phản biện đa chiều", prompt: "Chỉ ra điểm yếu, lỗ hổng lập luận. Đưa ra góc nhìn trái chiều.", boxClass: "bg-rose-50/50 border-rose-200 border-l-4 border-l-rose-500", titleClass: "text-rose-800", btnClass: "text-rose-700 bg-white hover:bg-rose-100 border-rose-200" },
+                'solution': { icon: "🛠️", title: "Đề xuất giải pháp", prompt: "Dựa vào vấn đề hoặc điểm yếu được nêu trong đoạn văn, hãy đề xuất các giải pháp khả thi, thực tế và đột phá để khắc phục.", boxClass: "bg-indigo-50/50 border-indigo-200 border-l-4 border-l-indigo-500", titleClass: "text-indigo-800", btnClass: "text-indigo-700 bg-white hover:bg-indigo-100 border-indigo-200" },
+                'expand': { icon: "🌐", title: "Mở rộng vấn đề", prompt: "Mở rộng nguyên nhân, bối cảnh lịch sử, liên hệ vĩ mô.", boxClass: "bg-amber-50/50 border-amber-200 border-l-4 border-l-amber-500", titleClass: "text-amber-800", btnClass: "text-amber-700 bg-white hover:bg-amber-100 border-amber-200" }
+            };
+            const theme = themes[toolType];
+
+            const resultBoxId = 'res-' + Date.now(); const resultBox = document.createElement('div'); resultBox.id = resultBoxId; 
+            resultBox.className = `inline-result-box my-6 border rounded-2xl shadow-sm relative transition-all ${isNested ? 'nested-result' : ''} ${theme.boxClass}`;
+            
+            resultBox.innerHTML = `<div class="border-b border-white/40 px-4 py-3 flex justify-between items-center cursor-pointer rounded-t-2xl box-header hover:bg-white/20 transition-colors" onclick="toggleBox('${resultBoxId}')"><span class="text-xs font-bold uppercase tracking-widest flex items-center gap-2 box-title ${theme.titleClass}"><svg class="w-4 h-4 animate-spin opacity-70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>AI Đang phân tích...</span><div class="flex items-center gap-1 md:gap-3"><span class="${theme.titleClass} font-semibold text-xs toggle-btn-text hidden md:inline">Thu gọn</span><button onclick="toggleFullScreen('${resultBoxId}', event)" class="text-slate-500 hover:text-slate-800 transition-colors p-1.5 rounded hover:bg-white/50" title="Toàn màn hình / Thu nhỏ"><svg id="fs-icon-${resultBoxId}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg></button><button onclick="document.getElementById('${resultBoxId}').remove(); window.autoSave(); event.stopPropagation();" class="text-slate-500 hover:text-red-500 transition-colors p-1.5 rounded hover:bg-white/50" title="Xóa kết quả này"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button></div></div><div class="p-4 md:p-5 box-content" id="content-${resultBoxId}"><div class="h-4 bg-white/60 rounded w-3/4 mb-3 animate-pulse"></div><div class="h-4 bg-white/60 rounded w-full mb-3 animate-pulse"></div><div class="h-4 bg-white/60 rounded w-5/6 animate-pulse"></div></div>`;
+            if (bParent && bParent.parentNode) bParent.parentNode.insertBefore(resultBox, bParent.nextSibling); else contentArea.appendChild(resultBox); 
+            window.getSelection().removeAllRanges(); setTimeout(() => resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+
+            const finalPrompt = `[BỐI CẢNH TOÀN BÀI]\n"""${globalFormattedText}"""\n\n[ĐOẠN VĂN]\n"""${currentSelectedText}"""\n\n[NHIỆM VỤ]\n${theme.prompt}\nViết bằng tiếng Việt, định dạng Markdown rõ ràng.`;
+
+            try {
+                const result = await executeAITask('text', finalPrompt);
+                
+                document.getElementById(`content-${resultBoxId}`).innerHTML = `<div class="prose prose-blue max-w-none prose-sm md:prose-base">${marked.parse(result.response.text())}</div>`;
+                const titleSpan = resultBox.querySelector('.box-title'); 
+                titleSpan.innerHTML = theme.icon + ' ' + theme.title; 
+                
+                const footerDiv = document.createElement('div'); footerDiv.className = "border-t border-white/40 px-4 py-3 flex justify-center items-center rounded-b-2xl box-footer";
+                footerDiv.innerHTML = `<button onclick="toggleBox('${resultBoxId}')" class="${theme.btnClass} border shadow-sm transition-colors text-sm font-medium flex items-center gap-1.5 px-4 py-1.5 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>Thu gọn kết quả</button>`;
+                resultBox.appendChild(footerDiv); autoSave();
+            } catch (error) { document.getElementById(`content-${resultBoxId}`).innerHTML = `<p class="text-red-600 font-semibold">Lỗi phân tích: ${error.message}</p>`; }
+        };
+    </script>
+</body>
+</html>
