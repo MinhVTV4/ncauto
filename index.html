@@ -1161,6 +1161,20 @@
             sendToPageAgent(cmd);
         }
 
+        // Kỹ thuật quét sâu (Đào xuyên qua mọi lớp Shadow DOM lồng nhau)
+        function deepQuerySelector(root, selector) {
+            if (!root) return null;
+            let el = root.querySelector(selector);
+            if (el) return el;
+            for (let child of root.querySelectorAll('*')) {
+                if (child.shadowRoot) {
+                    let found = deepQuerySelector(child.shadowRoot, selector);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
         function sendToPageAgent(text) {
             const host = document.querySelector('page-agent') || document.querySelector('.page-agent-panel-container');
             if (!host) {
@@ -1169,60 +1183,71 @@
             }
             const root = host.shadowRoot || host;
             
-            // 1. Quét tìm mọi loại ô nhập liệu có thể
-            let input = root.querySelector('textarea, input[type="text"], input[type="search"]') || root.querySelector('[contenteditable="true"]');
+            // 1. Quét sâu để tìm đúng ô nhập liệu
+            let input = deepQuerySelector(root, 'textarea, input[type="text"], input[type="search"]') || deepQuerySelector(root, '[contenteditable="true"]');
+            
             if (!input) {
-                showToast("⚠️ Không tìm thấy ô nhập lệnh.");
+                showToast("⚠️ Không tìm thấy ô nhập lệnh của Agent.");
                 return;
             }
 
-            // 2. Focus vào ô
+            // 2. Kỹ thuật Bypass Anti-Bot bằng document.execCommand
             input.focus();
+            input.value = ''; // Xóa sạch nội dung cũ (nếu có)
             
-            // 3. Gán chữ bằng Native Setter để qua mặt React/Vue state
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-            const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-            
-            if (input.tagName === 'INPUT' && nativeInputValueSetter) {
-                nativeInputValueSetter.call(input, text);
-            } else if (input.tagName === 'TEXTAREA' && nativeTextAreaValueSetter) {
-                nativeTextAreaValueSetter.call(input, text);
-            } else {
-                input.value = text;
-                input.innerText = text;
-                input.textContent = text;
+            // Ép trình duyệt mô phỏng lệnh "Dán chữ" (Paste) của người thật.
+            if (!document.execCommand('insertText', false, text)) {
+                // Fallback nếu trình duyệt không hỗ trợ execCommand
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+                const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+                
+                if (input.tagName === 'INPUT' && nativeInputValueSetter) {
+                    nativeInputValueSetter.call(input, text);
+                } else if (input.tagName === 'TEXTAREA' && nativeTextAreaValueSetter) {
+                    nativeTextAreaValueSetter.call(input, text);
+                } else {
+                    input.value = text;
+                    input.innerText = text;
+                }
             }
 
-            // 4. Giả lập chuỗi sự kiện của người thật với composed = true (đi xuyên Shadow DOM)
-            const events = ['keydown', 'keypress', 'input', 'change', 'keyup'];
-            events.forEach(eventType => {
-                let event;
-                if (eventType.startsWith('key')) {
-                    event = new KeyboardEvent(eventType, { key: 'a', bubbles: true, composed: true });
-                } else {
-                    event = new Event(eventType, { bubbles: true, composed: true });
-                }
-                input.dispatchEvent(event);
-            });
+            // Bắn event để React/Vue kích hoạt hàm Validate
+            input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
 
-            // 5. Chờ 300ms cho UI Framework kịp lưu state mới, sau đó bấm nút Gửi
+            // 3. Tìm nút gửi và Click
             setTimeout(() => {
-                const buttons = Array.from(root.querySelectorAll('button, [role="button"]'));
-                // Quét tìm nút Gửi (icon máy bay giấy, chữ send...)
-                let sendBtn = buttons.find(b => b.type === 'submit' || b.innerHTML.includes('send') || b.innerHTML.includes('paper-plane') || b.innerHTML.includes('M2.01 21L23 12'));
-                if (!sendBtn && buttons.length > 0) sendBtn = buttons[buttons.length - 1]; // Lấy nút cuối làm dự phòng
+                // Lấy tất cả nút trong và ngoài Shadow DOM
+                let buttons = Array.from(root.querySelectorAll('button, [role="button"]'));
+                for (let child of root.querySelectorAll('*')) {
+                    if (child.shadowRoot) {
+                        buttons = buttons.concat(Array.from(child.shadowRoot.querySelectorAll('button, [role="button"]')));
+                    }
+                }
+                
+                // Nhận dạng nút gửi (Gửi, Send, Submit, hoặc chứa icon máy bay giấy)
+                let sendBtn = buttons.find(b => 
+                    b.type === 'submit' || 
+                    (b.className && b.className.toLowerCase().includes('send')) || 
+                    b.innerHTML.includes('send') || 
+                    b.innerHTML.includes('paper-plane') || 
+                    b.innerHTML.includes('M2.01 21L23 12') || // Icon máy bay giấy SVG
+                    b.innerHTML.includes('path')
+                );
+
+                if (!sendBtn && buttons.length > 0) sendBtn = buttons[buttons.length - 1];
 
                 if (sendBtn && !sendBtn.disabled) {
-                    sendBtn.click();
+                    // Cố tình dùng MouseEvent để giả lập con trỏ chuột click xuống
+                    sendBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, view: window }));
+                    sendBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, view: window }));
+                    sendBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true, view: window }));
                 } else {
-                    // Giả lập phím Enter nếu không có nút Submit
+                    // Nếu không có nút, ép trình duyệt nhấn phím Enter
                     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
                     input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
-                    
-                    const form = input.closest('form');
-                    if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true, composed: true }));
                 }
-                showToast("🤖 Đã giao việc cho Agent: " + text);
+                showToast("🤖 Đã giao việc ngầm cho AI: " + text);
             }, 300);
         }
 
